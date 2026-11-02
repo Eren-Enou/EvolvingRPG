@@ -23,11 +23,16 @@
 
 ## V0.2 — Light / heavy / dodge combat
 
+**Current assignment:** a separate playable `CombatTest` sandbox building on the player-tested V0.1/V0.1.1 movement foundation. See `COMBAT_SANDBOX.md` for implementation and acceptance steps. Timing and movement feel remain subject to player testing.
+
 - Separate manual Light and Heavy inputs.
 - Attack duration/commitment defined by data rather than hardcoded input branching.
 - Directional dodge and basic stamina spending + regenerative recovery.
 - Simple range/cone hit detection as temporary implementation.
 - Debug UI for stamina and action states.
+- Stationary, resettable training target with health, accumulated poise/stagger, and distinct Light/Heavy hit feedback.
+- Preserve jumping, camera controls, and dedicated Q/E strafing. Left Shift becomes dodge in the combat scene; the movement-only scene retains its original controls.
+- No enemy AI, equipment, talents, or multiplayer in this milestone.
 
 ## V0.3 — First meaningful enemy
 

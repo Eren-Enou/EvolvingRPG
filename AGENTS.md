@@ -23,4 +23,4 @@ Read `docs/VISION.md` and `docs/MILESTONES.md` before making changes.
 
 ## Current assignment
 
-Implement **V0.1 — Camera + movement** according to `docs/MILESTONES.md`. Begin by inspecting the actual Unity project and imported packages. If the character/controller package isn't installed, provide Unity Editor setup instructions instead of inventing scene/prefab references. Make the smallest changes necessary to get a playable graybox scene. Do not create enemies, combat, talents, loot, or menus yet.
+Implement **V0.2 — Combat foundations** according to `docs/MILESTONES.md` and the user's explicit combat-sandbox assignment. Movement, jumping, camera controls, and Q/E strafing have been player-tested. Preserve that foundation and the movement-only scene. Add separate Light/Heavy actions, a directional dodge, basic stamina, and a stationary resettable health/poise target in a separate combat sandbox. Do not add enemy AI, talents, equipment, loot, multiplayer, or gameplay menus. See `docs/COMBAT_SANDBOX.md` for controls, configuration, validation, and open decisions.

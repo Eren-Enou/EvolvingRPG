@@ -69,6 +69,7 @@ namespace EvolvingRPG.Editor
                 controller.TopClamp = 70f;
                 controller.BottomClamp = -30f;
                 player.AddComponent<PlaygroundMouseLook>();
+                player.AddComponent<DedicatedStrafe>();
                 player.GetComponent<StarterAssetsInputs>().cursorInputForLook = false;
 
                 var rig = (GameObject)PrefabUtility.InstantiatePrefab(followAsset, scene);
@@ -142,6 +143,50 @@ namespace EvolvingRPG.Editor
             if (asset == null)
                 throw new InvalidOperationException("Missing imported Starter Assets prefab: " + Vendor + name);
             return asset;
+        }
+
+        [MenuItem("Tools/EvolvingRPG/Add Q-E Strafing to Movement Playground")]
+        public static void InstallStrafing()
+        {
+            if (EditorApplication.isPlayingOrWillChangePlaymode)
+                throw new InvalidOperationException("Exit Play mode before installing strafing.");
+
+            Scene scene = SceneManager.GetSceneByPath(ScenePath);
+            bool openedHere = !scene.IsValid() || !scene.isLoaded;
+            Scene previous = SceneManager.GetActiveScene();
+            if (openedHere)
+                scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Additive);
+            bool wasDirty = scene.isDirty;
+            try
+            {
+                ThirdPersonController player = null;
+                foreach (var root in scene.GetRootGameObjects())
+                    foreach (var candidate in root.GetComponentsInChildren<ThirdPersonController>(true))
+                    {
+                        if (player != null)
+                            throw new InvalidOperationException("Expected exactly one Starter Assets player in MovementTest.");
+                        player = candidate;
+                    }
+                if (player == null)
+                    throw new InvalidOperationException("No Starter Assets player found in MovementTest.");
+                if (player.GetComponent<DedicatedStrafe>() == null)
+                {
+                    Undo.AddComponent<DedicatedStrafe>(player.gameObject);
+                    EditorSceneManager.MarkSceneDirty(scene);
+                }
+                if (!wasDirty && !EditorSceneManager.SaveScene(scene))
+                    throw new IOException("Could not save the strafing component to MovementTest.");
+                Debug.Log(wasDirty
+                    ? "Q/E strafing added. MovementTest already had unsaved edits; save it yourself when ready."
+                    : "Q/E strafing installed and saved to " + ScenePath);
+            }
+            finally
+            {
+                if (previous.IsValid() && previous.isLoaded)
+                    SceneManager.SetActiveScene(previous);
+                if (openedHere)
+                    EditorSceneManager.CloseScene(scene, true);
+            }
         }
 
         private static void Box(Transform parent, string name, Vector3 position, Vector3 scale)

@@ -1,5 +1,7 @@
 # V0.1 movement playground
 
+V0.1 WASD, jumping, and mouse camera controls were subsequently player-tested successfully. V0.1.1 adds dedicated **Q/E strafing**; see [STRAFING_CONTROLS.md](STRAFING_CONTROLS.md) for behavior, Inspector tuning, validation, and the exact new file list.
+
 ## Launch in Unity
 
 The Unity project root is `EvolvingRPG/` inside this repository (the folder containing `Assets`, `Packages`, and `ProjectSettings`). The inspected project uses **Unity 6000.6.7f1 / URP**, rather than the 6.3 LTS version named in the vision. No version or package changes were made for this implementation.

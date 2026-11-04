@@ -1,5 +1,11 @@
 # V0.2 combat foundations
 
+The combat sandbox now includes structured training observations and an F6-clearable debug history. See [COMBAT_OBSERVATIONS.md](COMBAT_OBSERVATIONS.md) for the evidence contract, validation, and exact changes. This is the first implementation step toward contextual progression; no mastery or discoveries are awarded.
+
+Attacks also retain their parameters at commitment, so Inspector edits affect subsequent swings. See [ATTACK_SNAPSHOTS.md](ATTACK_SNAPSHOTS.md) for this foundation, exact file changes, and the isolated Play-mode checks.
+
+Completed misses explain range, facing, obstruction, or unavailable targets in the existing debug feedback. See [MELEE_MISS_FEEDBACK.md](MELEE_MISS_FEEDBACK.md) for interpretation, limitations, and checks.
+
 ## Launch
 
 Use the already-running Unity Editor (**6000.6.7f1**, the project's current version). Open `Assets/Game/Scenes/CombatTest.unity`, press **Play**, and click the Game view. No manual scene wiring, paid assets, or additional packages are needed. `MovementTest` remains the movement-only playground.
@@ -7,6 +13,8 @@ Use the already-running Unity Editor (**6000.6.7f1**, the project's current vers
 If CombatTest is missing on another checkout, allow script import to finish or use **Tools > EvolvingRPG > Create Combat Sandbox**. The builder copies the saved MovementTest into a new scene, wires components through Unity's API, restores the previously active scene, and refuses to overwrite an existing CombatTest. Existing scene edits are not saved by the builder. Keep the new scene, data/material assets, and all `.meta` files in version control.
 
 ## Controls and action rules
+
+Jump requests are consumed by the native controller and are not restored by the combat adapter. One Space press produces one jump; blocked presses during commitment are discarded. See [JUMP_INPUT_FIX.md](JUMP_INPUT_FIX.md) for the reproduced bug and landing-cycle regression checks. The player reports fluid combat; this fix still needs their jump retest.
 
 | Input | Behavior |
 | --- | --- |

@@ -2,6 +2,8 @@
 
 **Approach:** Validate one mechanic at a time. Each milestone should produce something playable. The vision document is the long-term compass, not the first milestone's scope.
 
+**Long-term progression requirements:** `EVOLVING_TALENT_SYSTEM.md` defines the established talent-system direction and labels mechanics that remain proposals. `PROGRESSION_DEVELOPMENT_PATH.md` maps that charter to small validation experiments. Following the user's instruction to continue developing with judgment, the current slice is V0.4 B: Heavy practice trial. The full progression system remains deferred, and earlier experiments are not assumed fully validated. Preserve the engine version declared by `ProjectSettings/ProjectVersion.txt` rather than changing it to match the historical V0.1 version target.
+
 ## V0.1 — Camera + movement (first task)
 
 **Goal:** A controllable character whose positioning feels good.
@@ -23,18 +25,29 @@
 
 ## V0.2 — Light / heavy / dodge combat
 
-**Current assignment:** a separate playable `CombatTest` sandbox building on the player-tested V0.1/V0.1.1 movement foundation. See `COMBAT_SANDBOX.md` for implementation and acceptance steps. Timing and movement feel remain subject to player testing.
+**Accepted working baseline:** the user confirmed corrected jumping and described combat timing/balance as decent for continued development. `CombatTest` remains the baseline sandbox. See `COMBAT_SANDBOX.md` for implementation and checks. This is permission to proceed, not a claim that balance is final.
+
+**Stamina tuning deferred by user request:** current regeneration is deliberately permissive for frequent-action/interrupt testing. Do not change costs or regeneration yet. Later compare sustained attack/dodge patterns and downtime, with build-dependent resource effects treated as experiments rather than fixed rules.
 
 - Separate manual Light and Heavy inputs.
 - Attack duration/commitment defined by data rather than hardcoded input branching.
 - Directional dodge and basic stamina spending + regenerative recovery.
 - Simple range/cone hit detection as temporary implementation.
 - Debug UI for stamina and action states.
+- Actor-local training observations distinguish accepted actions, resolved hits, misses, interruption, poise breaks, and completed dodges. These are playtest diagnostics, not progression awards; see `COMBAT_OBSERVATIONS.md`.
+- Attack execution and observations retain immutable parameters committed at acceptance; Inspector edits affect subsequent swings. See `ATTACK_SNAPSHOTS.md` for the implementation and isolated checks.
+- Completed attack misses retain range/facing/obstruction feedback for positioning playtests; see `MELEE_MISS_FEEDBACK.md`. The expanded 26-check combat suite previously passed after fixing repeated jump input (see `JUMP_INPUT_FIX.md`); eight isolated snapshot/feedback groups also passed. The player reports fluid combat and subsequently confirmed jumping is fine. These are historical results, not checks performed in the current documentation-only assignment.
 - Stationary, resettable training target with health, accumulated poise/stagger, and distinct Light/Heavy hit feedback.
 - Preserve jumping, camera controls, and dedicated Q/E strafing. Left Shift becomes dodge in the combat scene; the movement-only scene retains its original controls.
 - No enemy AI, equipment, talents, or multiplayer in this milestone.
 
 ## V0.3 — First meaningful enemy
+
+Separate `EnemyTest` sandbox; see `ENEMY_SANDBOX.md` for controls, Inspector parameters, implementation boundaries, and player acceptance questions. Existing `CombatTest` and `MovementTest` scenes are preserved.
+
+Implemented for first playtest: guarded and fast collision-aware opponents, committed telegraphs/strikes/recovery, player/enemy vitality and stagger, guard/flank/opening resolution, encounter-local repeated-pressure/flank reactions, reset, and debug feedback. Unity compilation, 11 isolated enemy groups plus a normal-frame smoke, 26 combat regressions, and eight snapshot groups pass. Opponent feel and response fairness await the user's playtest; no progression is enabled.
+
+The user describes this as an interesting playstyle foundation and a good start, and requested continued work. Preserve it for technique comparisons. This positive feedback supports the next experiment without treating opponent balance or every response rule as final.
 
 - A guarded enemy and a fast enemy with different openings.
 - Stagger and vulnerability interactions.
@@ -43,10 +56,25 @@
 
 ## V0.4 — Initial character evolution
 
+**Depth-first design refinement:** The user's latest steering prioritizes deeper applications of familiar actions over additional branches. [DEPTH_FIRST_DESIGN.md](DEPTH_FIRST_DESIGN.md) and [HEAVY_DISCIPLINE_DEPTH_STUDY.md](HEAVY_DISCIPLINE_DEPTH_STUDY.md) narrow the proposed research toward one Heavy lineage, contextual decisions, retained liabilities and readable control. New families/features remain dormant unless a demonstrated missing decision justifies them. This changes design priority only: V0.4 B is still the playable implementation, and no Unity or runtime work is authorized for this documentation assignment.
+
+**Future design work, documentation only:** [COMBAT_EVOLUTION_LAB.md](COMBAT_EVOLUTION_LAB.md) maps the foundation into small combat-identity experiments. [CONTEXTUAL_DISCOVERY_EXPERIMENT.md](CONTEXTUAL_DISCOVERY_EXPERIMENT.md) specifies proposed V0.4 C as defensive evidence first, knowledge-only discovery second, and an optional effect comparison third. The user requested this design pass without running the program. These documents do not add runtime features or replace V0.4 B as the current playable slice; implementation, compilation and player validation remain pending.
+
+**Expanded game-design path:** At the user's subsequent request for sustained concept development without Unity execution, [GROWTH_DESIGN_ATLAS.md](GROWTH_DESIGN_ATLAS.md) connects opening sessions, missions, specialization, equipment/abilities, world developments, UI and state contracts. [DEVELOPMENT_EXPERIMENT_BACKLOG.md](DEVELOPMENT_EXPERIMENT_BACKLOG.md) orders small future assignments with exit/stop conditions; [DESIGN_REVIEW_REGISTER.md](DESIGN_REVIEW_REGISTER.md) keeps unresolved policies explicit. This authorizes broader design only; it does not advance implementation status or settle balance/identity decisions.
+
+**V0.4 A, technique comparison:** A separate `TechniqueTest` scene compares baseline Heavy with Breaker (planted poise impact / longer commitment) and Momentum (windup advance / lighter impact / extra recovery on miss). Keys 1/2/3 are debug selectors; RMB remains Heavy. See `TECHNIQUE_EXPERIMENT.md`. Stamina costs/regeneration and prior scenes remain unchanged. Names, parameters, and selection behavior are prototype proposals, not talent ownership or respec rules.
+
+Ready for player comparison: Unity compilation, six isolated technique groups, three native-motor cases (60 Hz / 15 Hz simulation and wall collision), 26 baseline combat checks, 11 enemy groups plus a normal-frame smoke, and eight snapshot groups pass. These are functional checks; variant usefulness and tradeoffs await player testing.
+
+**Current slice: V0.4 B, Heavy practice trial.** `PracticeTest` tests completed Heavy outcomes against recently attacking opponents, explicit credit/rejection reasons, one award per committed enemy strike, pending-action/reset protection, and one optional F2 recovery trial. R starts fresh; no saves/unlocks/discoveries are enabled. See `HEAVY_PRACTICE_EXPERIMENT.md`. Credit rules, threshold, and proficiency effect are proposals. Source identity and pre-impact enemy context are captured in receipts; the effect resolves per actor before commitment without changing shared attack assets or stamina.
+
+Planning reference: `PROGRESSION_DEVELOPMENT_PATH.md` is aligned with `EVOLVING_TALENT_SYSTEM.md` sections 13–14. After combat/enemy readiness, proposed slices compare baseline Heavy with two behavior-changing variants, validate one meaningful-use mastery track, reveal one contextual interaction, and connect deliberate investment to minimal UI and character save/reload. Names, formulas, thresholds, and specialization/respec mechanisms remain subject to design review and playtesting.
+
 - Small handcrafted base talent tree.
 - Trigger/condition/effect talent definitions with explicit deterministic rules.
 - One mastery track and 2–3 discoverable adaptations.
 - Talents alter the rhythm/choices of play, not just damage numbers.
+- Include minimal versioned character persistence in the first complete progression prototype; integrate it into the mission loop in V0.5. A fresh Warrior inherits no mastery, purchases, or character-specific prerequisites. A full account archive is deferred.
 
 ## V0.5 — First mission loop
 

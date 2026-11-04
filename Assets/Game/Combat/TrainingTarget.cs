@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace EvolvingRPG.Combat
 {
-    public sealed class TrainingTarget : MonoBehaviour
+    public sealed class TrainingTarget : HitReceiver
     {
         [SerializeField, Min(1f)] private float maximumHealth = 250f;
         [SerializeField, Min(1f)] private float poiseThreshold = 60f;
@@ -16,7 +16,7 @@ namespace EvolvingRPG.Combat
         public float Poise { get; private set; }
         public float MaximumHealth => maximumHealth;
         public float PoiseThreshold => poiseThreshold;
-        public bool Defeated => Health <= 0f;
+        public override bool Defeated => Health <= 0f;
         public bool Staggered => Time.time < staggerUntil;
         public string LastHit { get; private set; } = "Ready";
         public event Action<HitData, bool> HitReceived;
@@ -29,13 +29,21 @@ namespace EvolvingRPG.Combat
 
         public bool ReceiveHit(HitData hit)
         {
+            return ReceiveHit(hit, out _);
+        }
+
+        public override bool ReceiveHit(HitData hit, out HitResolution resolution)
+        {
+            resolution = default;
             if (Defeated) return false;
-            Health = Mathf.Max(0f, Health - hit.Damage);
+            float appliedDamage = Mathf.Clamp(hit.Damage, 0f, Health);
+            float appliedPoise = Staggered ? 0f : Mathf.Clamp(hit.PoiseDamage, 0f, poiseThreshold - Poise);
+            Health -= appliedDamage;
             lastHitAt = Time.time;
             bool brokePoise = false;
             if (!Staggered)
             {
-                Poise += hit.PoiseDamage;
+                Poise += appliedPoise;
                 if (Poise >= poiseThreshold)
                 {
                     Poise = 0f;
@@ -44,7 +52,8 @@ namespace EvolvingRPG.Combat
                 }
             }
             if (Defeated) defeatedAt = Time.time;
-            LastHit = $"{hit.AttackName}: -{hit.Damage:0} HP / +{hit.PoiseDamage:0} poise"
+            resolution = new HitResolution(appliedDamage, appliedPoise, brokePoise, Defeated);
+            LastHit = $"{hit.AttackName}: -{appliedDamage:0} HP / +{appliedPoise:0} poise"
                 + (Defeated ? " | DEFEATED" : brokePoise ? " | STAGGERED" : "");
             HitReceived?.Invoke(hit, brokePoise);
             return true;

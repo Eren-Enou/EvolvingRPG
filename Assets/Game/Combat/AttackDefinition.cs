@@ -15,6 +15,10 @@ namespace EvolvingRPG.Combat
         [Min(0.1f)] public float Range = 2.2f;
         [Range(1f, 180f)] public float Arc = 90f;
         [Range(0f, 1f)] public float MovementMultiplier = 0.35f;
+        [Tooltip("Committed forward travel during windup. Collision may shorten travel.")]
+        [Min(0f)] public float AdvanceDistance;
+        [Tooltip("Additional recovery when the complete active window hits no receiver.")]
+        [Min(0f)] public float MissRecovery;
         public Color Color = new Color(0.2f, 0.85f, 1f);
         public float Duration => Windup + ActiveTime + Recovery;
 
@@ -27,6 +31,8 @@ namespace EvolvingRPG.Combat
             PoiseDamage = Mathf.Max(0f, PoiseDamage);
             StaminaCost = Mathf.Max(0f, StaminaCost);
             Range = Mathf.Max(0.1f, Range);
+            AdvanceDistance = Mathf.Max(0, AdvanceDistance);
+            MissRecovery = Mathf.Max(0, MissRecovery);
         }
     }
 }

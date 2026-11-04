@@ -1,34 +1,41 @@
-# Evolving RPG — Unity project starter
+# EvolvingRPG
 
-**Status:** Planning + first playable movement prototype. This folder is a documentation/repository scaffold, **not** a complete Unity project. Create the Unity project in Unity Hub first, then copy these files into its root (merge the `Assets` folder).
+A Unity third-person action-RPG prototype built around positioning, commitment, and a character whose identity develops through experience and deliberate choices.
 
-## Start here
+> A character is not a finished build to chase. It is something the player continuously discovers, in a world that evolves alongside them.
 
-1. Install **Unity Hub** and **Unity 6.3 LTS** with Windows Build Support if you intend to make Windows builds.
-2. In Unity Hub choose **New Project → Universal 3D (URP)**. Create an empty project, e.g. `EvolvingRPG`.
-3. Back up or commit that untouched project before adding packages.
-4. Import Unity Technologies' free **First Person + Third Person | Character Controllers** package (compatible with Unity 6.3 LTS): https://assetstore.unity.com/packages/3d/characters/first-person-third-person-character-controllers-196526
-5. If prompted, let Unity enable the **Input System**, restart the editor, and re-import the package if import was interrupted.
-6. Open the package's **Playground** demo scene to verify movement/camera before editing it. Then create your own `Assets/Game/Scenes/MovementTest.unity` scene based on or using the provided prefabs.
-7. Copy these starter docs and folders into the Unity project root.
-8. Use `docs/MILESTONES.md` to complete movement/camera testing before combat.
+This checkout is an existing Unity project. Use the engine version recorded in [ProjectVersion.txt](ProjectSettings/ProjectVersion.txt), currently **6000.6.7f1**. Do not recreate the project from the old scaffold instructions or change versions to match historical milestone text.
 
-## Design compass
+## Current prototype
 
-> The game isn't about reaching the strongest version of your character. It's about discovering what your character can become in a world that's changing alongside you.
+| Scene under Assets/Game/Scenes | Purpose |
+| --- | --- |
+| MovementTest | Third-person movement, jumping, strafing and camera comparison |
+| CombatTest | Light/Heavy, directional dodge and stationary training target |
+| EnemyTest | Guarded/fast opponents, health, poise and encounter reactions |
+| TechniqueTest | Baseline, Breaker and Momentum Heavy debug comparisons |
+| PracticeTest | Latest playable slice: meaningful Heavy practice and optional recovery trial |
 
-## First build: V0.1 Movement Test
+For future playtesting, open the desired scene in the existing Editor, enter Play mode and focus the Game view. See [Heavy practice instructions](docs/HEAVY_PRACTICE_EXPERIMENT.md) for the latest slice's controls, tuning, limitations and previously recorded functional results. The technique/practice formulas remain proposals; player testing establishes feel.
 
-**Build:** One character in a graybox test arena, camera-relative WASD, smooth turning, mouse-look, adjustable camera distance, basic collision, and movement around obstacles. A jump and basic dodge are optional until we have assessed the movement feel.
+The current assignment is **design/documentation only, without running Unity**. No new tests or gameplay validation were performed for the design expansion. Stamina is intentionally permissive for interruption investigation and remains unchanged.
 
-**Don't build yet:** precise weapon hitboxes, fully realized combat animations, enemy AI, inventory, procedural talents, multiplayer, hub, or missions.
+## Design and development
 
-## Version control
+The latest design focus is **depth within a selected discipline**. Read [Depth-first design](docs/DEPTH_FIRST_DESIGN.md) and [the Heavy discipline study](docs/HEAVY_DISCIPLINE_DEPTH_STUDY.md) before promoting more features from the broader design inventory.
 
-Commit `Assets/`, `Packages/`, `ProjectSettings/`, and their `.meta` files. Do **not** commit `Library/`, `Temp/`, `Obj/`, build directories, and other generated caches. Keep Unity and package versions recorded. Use Git LFS later for large binary assets such as textures, models, audio, and cinematics.
+Start at the [Growth Design Atlas](docs/GROWTH_DESIGN_ATLAS.md) for the game's proposed opening, missions, combat evolution, specialization, world growth, equipment/abilities and UI. It links the detailed specifications and distinguishes proposals from implemented systems.
 
-## Documents
+- [Vision](docs/VISION.md) — enduring direction.
+- [Talent charter](docs/EVOLVING_TALENT_SYSTEM.md) — established long-term principles and unresolved mechanics.
+- [Milestones](docs/MILESTONES.md) — actual implementation scope/status.
+- [Progression development path](docs/PROGRESSION_DEVELOPMENT_PATH.md) — existing foundations and progression boundaries.
+- [Experiment backlog](docs/DEVELOPMENT_EXPERIMENT_BACKLOG.md) — narrow future slices with dependencies and stop conditions.
+- [Design review register](docs/DESIGN_REVIEW_REGISTER.md) — open decisions, paper findings and design-pass change record.
+- [Agent instructions](AGENTS.md) — collaboration constraints.
 
-- `docs/VISION.md`: enduring design philosophy and established gameplay direction.
-- `docs/MILESTONES.md`: phased implementation plan, starting with acceptance criteria for V0.1.
-- `AGENTS.md`: instructions for Codex or another coding agent working in the repository.
+## Working safely in the project
+
+Keep custom code under Assets/Game. Preserve third-party assets, Unity .meta files, Packages and ProjectSettings. The user's Editor may remain open; do not launch a second Editor against the same project. Notify the user before changing scenes/prefabs they may be editing. The current documentation assignment does not require Editor configuration.
+
+Keep generated Library, Temp, build output and local reports outside version control as configured by the project. Broader talent generation, equipment economy, account services and multiplayer are future ambitions, not implemented features.

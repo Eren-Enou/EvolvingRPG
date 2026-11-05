@@ -42,6 +42,7 @@ namespace EvolvingRPG.Editor
         private static int jumpTakeoffs;
         private static bool aboveJumpThreshold;
         private static float started, deadline, peakHeight, cameraDistance;
+        private static float previousCaptureStep;
         private static Vector3 startPosition;
         private static Quaternion cameraRotation;
         private static KeyboardState pendingKeys;
@@ -73,6 +74,8 @@ namespace EvolvingRPG.Editor
 
         private static void Begin()
         {
+            previousCaptureStep = Time.captureDeltaTime;
+            Time.captureDeltaTime = 1f / 60;
             results.Clear(); errors.Clear(); checks.Clear();
             actions = null; target = null; follow = null;
             foreach (var root in SceneManager.GetActiveScene().GetRootGameObjects())
@@ -112,7 +115,7 @@ namespace EvolvingRPG.Editor
             BuildChecks();
             running = true; sampling = false; step = 0; frame = -1;
             started = Time.time;
-            deadline = (float)EditorApplication.timeSinceStartup + 90f;
+            deadline = (float)EditorApplication.timeSinceStartup + 240f;
             Application.logMessageReceived += RecordError;
             EditorApplication.update += Tick;
         }
@@ -322,6 +325,10 @@ namespace EvolvingRPG.Editor
                 if (EditorApplication.timeSinceStartup > deadline) throw new TimeoutException("Keep Unity focused while checks run.");
                 if (!EditorApplication.isPlaying || frame == Time.frameCount) return;
                 frame = Time.frameCount;
+                // Start/focus callbacks can finish after EnteredPlayMode. Guard sampled input,
+                // not the neutral settling frames before the first check.
+                if (sampling && (!Application.isFocused || Cursor.lockState != CursorLockMode.Locked))
+                    throw new InvalidOperationException("Test input lost Game view: focused=" + Application.isFocused + ", cursor=" + Cursor.lockState + ". Rerun without changing focus.");
                 if (!sampling)
                 {
                     Queue(Array.Empty<Key>());
@@ -385,13 +392,14 @@ namespace EvolvingRPG.Editor
         private static void Finish(bool exit = true)
         {
             running = false;
+            Time.captureDeltaTime = previousCaptureStep;
             EditorApplication.update -= Tick;
             InputSystem.onBeforeUpdate -= InjectInput;
             Application.logMessageReceived -= RecordError;
             if (keyboard != null && keyboard.added) InputSystem.RemoveDevice(keyboard);
             if (mouse != null && mouse.added) InputSystem.RemoveDevice(mouse);
             Directory.CreateDirectory("Logs");
-            string report = "Unity " + Application.unityVersion + " automated combat Play-mode checks\n" + string.Join("\n", results)
+            string report = "Unity " + Application.unityVersion + " automated combat Play-mode checks / 60 Hz simulation, real Input System events\n" + string.Join("\n", results)
                 + "\n" + (errors.Count == 0 ? "PASS: no runtime Console errors captured." : "FAIL\n" + string.Join("\n", errors));
             File.WriteAllText("Logs/CombatPlayModeChecks.txt", report);
             Debug.Log(report);

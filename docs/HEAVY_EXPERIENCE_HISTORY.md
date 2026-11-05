@@ -43,3 +43,5 @@ Use DevelopmentTest with the existing controls. Land a Heavy against an approach
 Save to A, create a fresh character and save to B, then load A. Confirm history belongs to A, while B has independent knowledge, purchases and experience. Repeat an already demonstrated outcome and confirm no additional fact or point appears. Save explicitly before leaving Play.
 
 The remaining question is whether these records help the player recognize a fighting identity and explain progress. They are not a complete familiarity effect. A future refinement needs a separately tested benefit, remaining liability and deliberate learning/configuration policy before these facts become its prerequisites.
+
+**Tools > EvolvingRPG > Run Heavy Experience Checks** (Ctrl+Shift+Alt+F7) runs the isolated evidence tests and eight real native cases, then stops Play. **Inspect Heavy Experience Fixture** (Ctrl+Shift+Alt+F6) runs the same cases and leaves Play open on the genuinely experienced Breaker character at safe spawn with its panel open. Scroll to the Breaker card to inspect its three facts. Both fixtures use isolated saves under Logs, never personal slots. Stop Play after inspection.

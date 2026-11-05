@@ -1,6 +1,66 @@
 # Continued development report — 2026-11-05
 
-## Latest follow-up — combat readability and protected knowledge
+## Latest follow-up — durable Heavy experience
+
+Started clean at `61436d2` on `development/combat-readability`; continued on `development/heavy-experience`. Unity 6000.6.7f1 was already open and stopped on DevelopmentTest. No second Editor, scene/prefab overwrite, vendor modification or personal-save write was used.
+
+### Implemented and deliberately deferred
+
+Selected **durable qualitative history without a new combat modifier**. DevelopmentTest now records completed live Heavy impact, guard break and windup interruption facts for Baseline and the character's owned discipline. Each fact can occur once per technique per character. Ordinary/evolved Momentum share a history. Recorded outcomes come from frozen pre-impact receipts and require full player recovery and an unchanged enabled opponent generation. A genuine approach hit before the enemy's first strike is eligible, addressing the old practice trial's reactive-only bias. Idle/returning/foreign targets, dummies, zero impacts, misses, interrupted actions and stale/disabled opponents are rejected.
+
+Facts do not award points, reduce recovery, change discovery or gate purchases. Experience changes character history revision only, never build revision or an accepted snapshot. The existing HeavyPractice points and optional recovery trial remain unchanged in PracticeTest. This is not infinite mastery and does not establish a reward economy. Full-recovery credit can exclude useful trades; that remains a player-feedback question rather than proof of poor play.
+
+Retention policy: completed facts enter the in-memory character on completion; R clears pending receipts but keeps facts. Explicit safe-spawn save writes the full character and fact set together. The fact set is also the lifetime credit budget, so no transient anti-replay counter can reopen credit after loading. Load replaces unsaved state, never merges it. Fresh characters start empty. Save failure retains in-memory facts and the prior disk record. Replaying an unsaved fact after rolling back can only restore that missing fact, never create additive currency.
+
+Schema 2 adds stable versioned experience IDs. Schema 1 migrates in memory with empty history while preserving identity, revisions, purchases, knowledge, balance and configuration. No accomplishment is inferred from old purchases or discovery counts. Reading does not rewrite; explicit save writes schema 2 and retains the previous supported file as backup. Unknown experience/discovery/schema records and legacy records with unexpected populated history are protected from overwrite or silent rollback. Duplicate/inconsistent history is rejected. This is a one-way supported upgrade; older executables cannot read schema 2. It is not automatic repair, indefinite backup retention or anti-cheat protection.
+
+The panel explains history separately from investment and the existing action review. Learned Heavy cards list demonstrated facts rather than a mandatory completion checklist. Combat feedback names newly demonstrated outcomes. The action review remains independent presentation; clearing it cannot erase experience.
+
+### Checkpoints
+
+- `755199a`: stabilize combat test input with a restored 60 Hz simulation clock and sampled focus diagnostics; production input/timing unchanged.
+- `12ccfcb`: complete compiling history/migration slice and model/native tests; the twelve-suite run passed before the final inspection refinement.
+- `b809ba9`: genuine-history inspection fixture, shared safe-panel entry and named fact feedback; final twelve-suite pass.
+- The final documentation checkpoint is listed in `git log`.
+
+### Actual checks and failures
+
+The first prerequisite run missed a single Space tap; an unchanged isolated rerun and full eleven-suite rerun passed. A later variable-clock run missed Q+Shift. Inspection found sub-50 ms input windows susceptible to Editor stalls. The combat fixture now uses 60 Hz simulation, restores the previous clock and reports focus loss during sampled input. An initial over-eager focus guard rejected neutral startup frames; it was narrowed to sampled frames. No production jump, dodge or input rules were changed. These failures are documented rather than discarded as gameplay observations; their exact original cause was not isolated to one host condition.
+
+After that correction, all twelve suites passed, including the 26 combat cases, real number-row event edges, movement/camera regressions, C1/C2/C3, opponents, old practice, snapshots/review, owned progression/save and panel lifecycle. The additional experience suite passed three isolated groups and eight native cases: true pre-first-strike initiative; R/repetition; interrupted impact; target reset before completion; miss; actual dummy contact; actual guarded-windup Breaker with A/B save/load; and repeated guard/interception after reload. The second saved character remained empty. No runtime errors were captured in those passing runs.
+
+Save checks passed real file roundtrip/backup, repeated loading, schema-1 non-writing migration with unchanged build and empty history, explicit schema-2 save retaining the legacy backup, unknown-ID protection, malformed/future/inconsistent data, traversal/I/O failure and native history retention. All file tests used unique ignored Logs directories, not personal saves.
+
+The final source state passed all twelve suites in the run started at `2026-11-05T21:17:34Z`, with no failed or skipped stages. The inspection fixture also passed and its genuinely recorded Breaker history was visually inspected in the small Game view: three facts, selected/owned Breaker and separate empty Baseline history were readable. Unity was then left stopped on DevelopmentTest. Reports: `Logs/ExtendedChecks.txt`, `Logs/HeavyExperienceChecks.txt`, `Logs/CharacterSaveChecks.txt` and the existing suites; copied captures under ignored `Logs/ExperienceValidation`. Detailed Editor activity remains in `Logs/FocusedDevelopmentUnity.log`. Historical errors/warnings remain in that log; a clean captured run is not a claim that historical Console output is empty.
+
+These are technical tests and narrow UI inspection. No physical-player session, standalone build, power-loss simulation, accessibility evaluation or gameplay-feel/balance validation was performed. C1's conservative sparse-sampling limitations remain. Finite first-time history does not solve recurring mastery, mission reward settlement or offline save editing.
+
+### Launch, inspect and playtest
+
+Open `Assets/Game/Scenes/DevelopmentTest.unity` in the existing Unity Editor, press Play and click Game view. No new scene rebuild, package or Inspector wiring is needed. Controls stay WASD/Q/E, Space, mouse/wheel, LMB/RMB and Shift. Finish a Heavy against an approaching or attacking opponent, then R and Tab. Read **Character experience** and the learned Heavy card. Compare a miss, interruption, successful contact and repetition. With an owned Breaker, inspect guard break/interception. Experience itself changes no combat values.
+
+Save explicitly to A, create/save a fresh character to B, then load A to compare independent history/builds. Loading older schema 1 starts experience empty, with an explanatory migration message. Existing safe-boundary restrictions and `Application.persistentDataPath/CharacterDevelopmentPrototype` location remain.
+
+For technical checks use **Tools > EvolvingRPG > Run Extended Regression Checks** (Ctrl+Shift+F11) with scenes saved, Unity focused and Play stopped. **Run Heavy Experience Checks** (Ctrl+Shift+Alt+F7) runs only the new model/native sequence. **Inspect Heavy Experience Fixture** (Ctrl+Shift+Alt+F6) runs that sequence, then leaves a genuinely experienced Breaker open in the safe-spawn panel. Stop Play after inspecting. It uses isolated test saves under Logs.
+
+### Actual changed files
+
+- Added `Assets/Game/Progression/HeavyExperienceCatalog.cs`, `HeavyExperienceCollector.cs` and their `.meta` files.
+- Added `Assets/Game/Editor/HeavyExperienceChecks.cs` and `.meta`.
+- Modified `Assets/Game/Progression/CharacterDevelopmentState.cs`, `CharacterSaveStore.cs`, `OwnedCharacter.cs`, `DevelopmentPanel.cs`.
+- Modified `Assets/Game/Editor/CharacterSaveChecks.cs`, `CombatPlayModeChecks.cs`, `ExtendedChecks.cs`, `OvernightChecks.cs`.
+- Added `docs/HEAVY_EXPERIENCE_HISTORY.md` and `docs/CHARACTER_IDENTITY_PATH.md`.
+- Updated `AGENTS.md`, `README.md`, `docs/MILESTONES.md`, `docs/CHARACTER_DEVELOPMENT_PLAYGROUND.md` and this report.
+
+All scenes/prefabs, attack definitions, combat execution, stamina, movement/camera scripts, third-party assets, Packages and ProjectSettings are unchanged from `61436d2`.
+
+### Next smallest milestone
+
+[CHARACTER_IDENTITY_PATH.md](CHARACTER_IDENTITY_PATH.md) distinguishes the working boundaries from missing ones and gives three bounded next experiments with support/revise/reject criteria: experience fairness including initiative/trades; a useful deliberately selected familiarity refinement using the old isolated trial first; and whether the same developed character makes different decisions across familiar return contexts. No extra combat development was implemented. The next dependency is player feedback on whether the history is understandable and fair and whether any refinement creates a useful choice. Do not turn first-time facts into a compulsory checklist or serialize the old point economy without a recurring reward/retention policy.
+
+---
+
+## Earlier follow-up — combat readability and protected knowledge
 
 Started clean at `fc47760` on `development/character-ownership`; created `development/combat-readability`. The earlier ownership/save report is preserved below as history. No reset, scene overwrite, package change or second Editor instance was used.
 

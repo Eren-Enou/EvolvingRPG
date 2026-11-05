@@ -67,7 +67,7 @@ namespace EvolvingRPG.Progression
             else if (id == DevelopmentIds.Retaliation && Knowledge == DiscoveryKnowledge.Revealed && Primary == DevelopmentIds.Momentum)
                 RetaliationLearned = true; // Learning never implicitly activates the effect.
             else return false;
-            Revision++; BuildRevision++; message = "Learned " + id + "."; return true;
+            Revision++; BuildRevision++; message = "Learned " + DevelopmentIds.Label(id) + "."; return true;
         }
         public bool Configure(string heavy, bool retaliation, out string message)
         {

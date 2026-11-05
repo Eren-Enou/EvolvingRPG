@@ -32,12 +32,27 @@ namespace EvolvingRPG.Progression
                 GUILayout.Label(character.Message);
                 GUILayout.EndArea(); return;
             }
+            var previousColor = GUI.color; GUI.color = new Color(.07f, .09f, .12f, 1);
+            GUI.DrawTexture(new Rect(12, 12, Mathf.Min(760, Screen.width - 24), Screen.height - 30), Texture2D.whiteTexture);
+            GUI.color = previousColor;
             GUILayout.BeginArea(new Rect(12, 12, Mathf.Min(760, Screen.width - 24), Screen.height - 30), GUI.skin.box);
             GUILayout.Label("OWNED CHARACTER / experimental specialization / Tab inspect at spawn / R encounter reset");
             GUILayout.Label($"Character {state.CharacterId.Substring(0, 8)} | points {state.Balance}/{state.Granted} granted | selected {DevelopmentIds.Label(state.Heavy)}");
             GUILayout.Label($"{actions.Phase} | {actions.Message} | HP {character.GetComponent<CombatVitality>().Health:0} | stamina {character.GetComponent<CombatStamina>().Current:0}");
             GUILayout.Label("Knowledge: " + state.Knowledge + " | qualifying exchanges " + state.Exchanges + "/3 | learned return: " + state.RetaliationLearned + " | active: " + state.RetaliationActive);
             GUILayout.Label(character.Message);
+            if (preview != null)
+            {
+                GUILayout.Label("Confirm spending 1 point on: " + DevelopmentIds.Label(preview) + " (preview revision " + previewRevision + ")");
+                if (GUILayout.Button("Confirm investment")) { character.Purchase(preview, previewRevision); preview = null; }
+                if (GUILayout.Button("Cancel preview")) preview = null;
+            }
+            if (saveSlot != null)
+            {
+                GUILayout.Label("Confirm saving character " + saveCharacter.Substring(0, 8) + " to " + saveSlot + ". Existing supported slot becomes the backup.");
+                if (GUILayout.Button("Confirm save / overwrite supported slot")) { if (character.State.CharacterId == saveCharacter) character.SaveSlot(saveSlot); saveSlot = null; }
+                if (GUILayout.Button("Cancel save")) saveSlot = null;
+            }
             scroll = GUILayout.BeginScrollView(scroll);
             GUILayout.Label("Prototype rule: one Heavy discipline per character; no respec. One point initially; one additional, once-only fixture point on reveal. Compare another fresh character. Not a final economy.");
             Card(DevelopmentIds.Baseline, "Baseline Heavy: original commitment, 45 damage / 40 poise; no advance.");
@@ -46,24 +61,12 @@ namespace EvolvingRPG.Progression
             if (state.Knowledge == DiscoveryKnowledge.Undiscovered) GUILayout.Label("Further connections emerge through invested combat experience.");
             else if (state.Knowledge == DiscoveryKnowledge.Foreshadowed) GUILayout.Label("Hint: your verified evasions are beginning to shape your advancing strikes.");
             else Card(DevelopmentIds.Retaliation, "Retaliatory Momentum: after verified evasion, forward intent + RMB adds 0.4 m. +0.25 s recovery unless the linked opponent generation is hit. Learning does not activate it.");
-            if (preview != null)
-            {
-                GUILayout.Label("Confirm spending 1 point on: " + DevelopmentIds.Label(preview) + " (preview revision " + previewRevision + ")");
-                if (GUILayout.Button("Confirm investment")) { character.Purchase(preview, previewRevision); preview = null; }
-                if (GUILayout.Button("Cancel preview")) preview = null;
-            }
             if (GUILayout.Button(confirmFresh ? "Confirm fresh character (unsaved current character replaced)" : "Create fresh experimental character"))
             { if (confirmFresh) { character.FreshCharacter(); confirmFresh = false; preview = saveSlot = null; } else confirmFresh = true; }
             foreach (string slot in new[] { "A", "B" })
             {
                 if (GUILayout.Button("Save current character to slot " + slot)) { saveSlot = slot; saveCharacter = state.CharacterId; }
                 if (GUILayout.Button("Load slot " + slot + " (replaces unsaved current character)")) { character.LoadSlot(slot); preview = saveSlot = null; }
-            }
-            if (saveSlot != null)
-            {
-                GUILayout.Label("Confirm saving character " + saveCharacter.Substring(0, 8) + " to " + saveSlot + ". Existing supported slot becomes the backup.");
-                if (GUILayout.Button("Confirm save / overwrite supported slot")) { if (character.State.CharacterId == saveCharacter) character.SaveSlot(saveSlot); saveSlot = null; }
-                if (GUILayout.Button("Cancel save")) saveSlot = null;
             }
             GUILayout.Label("Local save folder: " + character.SaveLocation);
             if (state.HasUnresolvedContent) GUILayout.Label(state.ContentWarning);

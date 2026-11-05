@@ -18,10 +18,11 @@ This checkout is an existing Unity project. Use the engine version recorded in [
 | EvasionEvidenceTest | C1 diagnostic-only evasion evidence |
 | DiscoveryTest | C2 session investments, contextual hint/reveal and journal; no effects |
 | RetaliationTest | C3 discovery plus optional extended-return A/B trial |
+| DevelopmentTest | Owned Heavy choice, contextual discovery, deliberate investment/activation and versioned A/B saves |
 
-Newest playable slice: open **Assets/Game/Scenes/RetaliationTest.unity**, press Play and click Game view. See [discovery/trial controls](docs/DISCOVERY_PLAYGROUND.md) and the [overnight report](docs/OVERNIGHT_PROGRESS_REPORT.md). Start with 3 for Momentum and F4/F5 for the two explicit investment fixtures. Verified evasion plus a completed same-opponent Momentum exchange supplies a clue; three distinct strikes reveal the option. F2 enables a trial after reveal; a subsequent verified evasion plus forward intent + RMB requests the extended return. Discovery never automatically grants ownership.
+Newest playable slice: open **Assets/Game/Scenes/DevelopmentTest.unity**, press Play, click Game view, then press **Tab** at spawn. Preview and confirm Breaker or Momentum with the controlled test point. Momentum's verified evade-and-return exchanges supply a clue and reveal; later learning and activation are separate choices. The panel offers explicit local save/load slots A/B. See [controls and save behavior](docs/CHARACTER_DEVELOPMENT_PLAYGROUND.md) and [continued development results](docs/CONTINUED_DEVELOPMENT_REPORT.md).
 
-C1/C2/C3 Unity compilation and supported native checks passed. The focused keyboard/mouse combat suite remains for interactive Editor testing; gameplay feel is not validated by these checks. Real talent purchases and saves are deferred. Stamina remains deliberately permissive and unchanged.
+Focused combat/technique input and supported native progression/save checks pass. The economy and specialization rules are experimental; gameplay feel awaits player testing. Stamina remains deliberately permissive and unchanged. Existing evidence/discovery/trial scenes remain available as independent comparisons.
 
 ## Design and development
 

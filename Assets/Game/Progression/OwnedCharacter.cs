@@ -41,9 +41,13 @@ namespace EvolvingRPG.Progression
         void Start()
         {
             if (baseline == null || breaker == null || momentum == null || encounter == null) { enabled = false; Debug.LogError("Owned-character authoring references are incomplete.", this); return; }
-            discovery.Ledger.Changed += OnKnowledge; encounter.SetInterfaceVisible(false); Apply();
+            discovery.Ledger.Changed -= OnKnowledge; discovery.Ledger.Changed += OnKnowledge; encounter.SetInterfaceVisible(false); Apply();
         }
-        void OnEnable() => inspect.Enable();
+        void OnEnable()
+        {
+            inspect.Enable();
+            if (discovery != null && discovery.Ledger != null) { discovery.Ledger.Changed -= OnKnowledge; discovery.Ledger.Changed += OnKnowledge; OnKnowledge(); }
+        }
         void OnDisable() { inspect.Disable(); CloseMenu(); if (discovery != null && discovery.Ledger != null) discovery.Ledger.Changed -= OnKnowledge; }
         void OnKnowledge() => State.RecordKnowledge(discovery.Ledger.Exchanges);
         bool SafeOpponents()
@@ -112,7 +116,13 @@ namespace EvolvingRPG.Progression
             if (!menu) return;
             menu = false;
             if (mouseLook != null) mouseLook.enabled = previousMouseLook;
-            if (playerInput != null && previousInput) playerInput.ActivateInput();
+            if (playerInput != null && previousInput && playerInput.isActiveAndEnabled)
+            {
+                // During scene/Play teardown PlayerInput may already have unregistered itself.
+                // Never reactivate an input component after its own OnDisable has run.
+                foreach (var activePlayer in PlayerInput.all)
+                    if (activePlayer == playerInput) { playerInput.ActivateInput(); break; }
+            }
             // Keep cursor released; the next deliberate Game-view click captures it without attacking.
         }
     }

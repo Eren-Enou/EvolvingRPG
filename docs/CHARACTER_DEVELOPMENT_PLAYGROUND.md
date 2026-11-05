@@ -25,3 +25,9 @@ A same-directory temporary file is flushed and validated before replacement; the
 Save errors retain the in-memory character and show a message. No automatic refunds, migration, deletion or repair are performed. Schemas other than version 1 are not supported yet. Saves do not include the earlier HeavyPractice proficiency trial; this is the ownership/knowledge boundary, not a completed production mastery economy.
 
 **Run Character Save Checks** exercises temporary files under ignored Logs, not user saves. **Run Character Development Checks** also exercises native owner save/reload after actual discovery and combat, including two independent characters, busy-action rejection and absence of restored opportunities.
+
+## Focused panel checks
+
+With Unity focused and Play mode stopped, **Tools > EvolvingRPG > Run Development Panel Input Checks** (Ctrl+Shift+F9) injects Tab through Unity's Input System, verifies opening/closing and player-input ownership, then leaves the panel open for visual inspection. Stop Play mode afterward. **Run Development Panel Exit Checks** (Ctrl+Shift+F10) also exits with the panel open and captures teardown errors. These are technical input checks; Windows-injected helper keystrokes are not evidence of physical-player testing.
+
+The panel uses an opaque background so diagnostic overlays cannot obscure investment cards. Purchase and save confirmations remain above the scroll area. A confirmed Momentum UI purchase was checked in the Editor; temporary UI test characters were not written to user save slots.

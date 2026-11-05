@@ -13,14 +13,15 @@ namespace EvolvingRPG.Editor
     {
         const string Active = "EvolvingRPG.Extended.Active", Stage = "EvolvingRPG.Extended.Stage";
         const string Report = "Logs/ExtendedChecks.txt";
-        static readonly string[] Reports = { "CombatPlayModeChecks", "TechniquePlayModeChecks", "EvasionEvidenceChecks", "EnemyPlayModeChecks", "PracticePlayModeChecks", "AttackSnapshotChecks", "DiscoveryChecks", "RetaliationChecks", "DevelopmentChecks", "DevelopmentPanelInputChecks", "StrafingPlayModeChecks" };
+        static readonly string[] Reports = { "CombatPlayModeChecks", "TechniquePlayModeChecks", "EvasionEvidenceChecks", "EnemyPlayModeChecks", "PracticePlayModeChecks", "AttackSnapshotChecks", "DiscoveryChecks", "RetaliationChecks", "DevelopmentChecks", "DevelopmentPanelInputChecks", "StrafingPlayModeChecks", "HeavyExperienceChecks" };
         static readonly string[] Completed = {
             "PASS: no runtime Console errors captured.", "PASS: all motor checks; no runtime Console errors captured.",
             "PASS all C1 checks; no runtime Console errors captured.", "PASS: live smoke; no runtime Console errors captured.",
             "PASS: live practice; no runtime Console errors captured.", "PASS: all checks; no runtime Console errors captured.",
             "PASS All C2 checks; no runtime Console errors", "PASS all C3 native checks; no runtime Console errors.",
             "PASS all ownership checks including nine owned native retaliation cases and fresh-character reset.",
-            "PASS Exit Play mode with panel open: no runtime teardown errors.", "PASS: no runtime Console errors captured." };
+            "PASS Exit Play mode with panel open: no runtime teardown errors.", "PASS: no runtime Console errors captured.",
+            "PASS All Heavy experience model/native checks; no runtime Console errors." };
         static ExtendedChecks() { EditorApplication.playModeStateChanged += Changed; EditorApplication.update += Tick; }
 
         [MenuItem("Tools/EvolvingRPG/Run Extended Regression Checks %#F11")]
@@ -62,6 +63,7 @@ namespace EvolvingRPG.Editor
                     case 10:
                         EditorSceneManager.OpenScene(MovementPlaygroundBuilder.ScenePath);
                         StrafingPlayModeChecks.Run(); break;
+                    case 11: HeavyExperienceChecks.Run(); break;
                 }
             }
             catch (Exception e) { Finish(false, e.ToString()); }

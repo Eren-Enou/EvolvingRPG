@@ -12,7 +12,7 @@ namespace EvolvingRPG.Editor
         const string Active = "EvolvingRPG.Overnight.Active";
         const string Stage = "EvolvingRPG.Overnight.Stage";
         const string Seen = "EvolvingRPG.Overnight.SeenPlay";
-        static readonly string[] Reports = { "EvasionEvidenceChecks", "CombatPlayModeChecks", "TechniquePlayModeChecks", "EnemyPlayModeChecks", "PracticePlayModeChecks", "AttackSnapshotChecks", "DiscoveryChecks", "RetaliationChecks", "DevelopmentChecks" };
+        static readonly string[] Reports = { "EvasionEvidenceChecks", "CombatPlayModeChecks", "TechniquePlayModeChecks", "EnemyPlayModeChecks", "PracticePlayModeChecks", "AttackSnapshotChecks", "DiscoveryChecks", "RetaliationChecks", "DevelopmentChecks", "HeavyExperienceChecks" };
         static OvernightChecks() { EditorApplication.playModeStateChanged += Changed; EditorApplication.update += Tick; }
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         static void PrepareBatchDevices()
@@ -51,6 +51,7 @@ namespace EvolvingRPG.Editor
                     case 6: DiscoveryChecks.Run(); break;
                     case 7: RetaliationChecks.Run(); break;
                     case 8: DevelopmentChecks.Run(); break;
+                    case 9: HeavyExperienceChecks.Run(); break;
                 }
             }
             catch (Exception e) { Debug.LogException(e); Stop(2); }

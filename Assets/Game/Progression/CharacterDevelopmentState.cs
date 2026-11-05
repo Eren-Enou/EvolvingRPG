@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using EvolvingRPG.Combat;
 
 namespace EvolvingRPG.Progression
@@ -40,6 +41,25 @@ namespace EvolvingRPG.Progression
         public bool HasUnresolvedContent { get; private set; }
         public string ContentWarning { get; private set; } = "";
         string retainedHeavy;
+        readonly HashSet<string> heavyExperience = new HashSet<string>(StringComparer.Ordinal);
+        public int ExperienceCount => heavyExperience.Count;
+        public bool HasExperience(string profile, string outcome) => heavyExperience.Contains(HeavyExperienceCatalog.Id(profile, outcome));
+        public string[] ExperienceFacts
+        {
+            get { var result = new string[heavyExperience.Count]; heavyExperience.CopyTo(result); Array.Sort(result, StringComparer.Ordinal); return result; }
+        }
+        public int RecordExperience(IEnumerable<string> facts)
+        {
+            if (HasUnresolvedContent || facts == null) return 0;
+            var combined = new HashSet<string>(heavyExperience, StringComparer.Ordinal);
+            foreach (string fact in facts) { if (!HeavyExperienceCatalog.Known(fact)) return 0; combined.Add(fact); }
+            var all = new string[combined.Count]; combined.CopyTo(all);
+            if (!HeavyExperienceCatalog.Validate(all, Primary, true)) return 0;
+            int added = combined.Count - heavyExperience.Count;
+            if (added == 0) return 0;
+            heavyExperience.UnionWith(combined); Revision++; // History never changes the committed build.
+            return added;
+        }
         public bool Owns(string id) => id == DevelopmentIds.Baseline || id == Primary || id == DevelopmentIds.Retaliation && RetaliationLearned;
         public string Eligibility(string id)
         {
@@ -79,7 +99,7 @@ namespace EvolvingRPG.Progression
         }
         public CharacterSaveData Export() => new CharacterSaveData
         {
-            schemaVersion = 1, discoveryId = DevelopmentIds.Retaliation, characterId = CharacterId, revision = Revision, buildRevision = BuildRevision,
+            schemaVersion = 2, heavyExperience = ExperienceFacts, discoveryId = DevelopmentIds.Retaliation, characterId = CharacterId, revision = Revision, buildRevision = BuildRevision,
             primary = Primary, heavy = retainedHeavy ?? Heavy, primaryPaid = Primary.Length > 0 ? 1 : 0,
             retaliationPaid = RetaliationLearned ? 1 : 0, exchanges = Exchanges,
             grantedPoints = Granted, pointBalance = Balance, retaliationLearned = RetaliationLearned, retaliationActive = RetaliationActive
@@ -87,12 +107,19 @@ namespace EvolvingRPG.Progression
         public static bool TryRestore(CharacterSaveData data, out CharacterDevelopmentState state, out string message)
         {
             state = null; message = "Invalid or inconsistent character save; original preserved.";
-            if (data == null || data.schemaVersion != 1 || !Guid.TryParseExact(data.characterId, "N", out _)
+            bool migrated = data != null && data.schemaVersion == 1;
+            if (migrated)
+            {
+                if (data.heavyExperience != null && data.heavyExperience.Length != 0) return false;
+                data = data.UpgradeLegacyExperience(); // Copy; never mutate a caller's original record.
+            }
+            if (data == null || data.schemaVersion != 2 || !Guid.TryParseExact(data.characterId, "N", out _)
                 || data.revision < 0 || data.revision > int.MaxValue - 100 || data.buildRevision < 0 || data.buildRevision > data.revision
                 || data.exchanges < 0 || data.exchanges > 3 || data.primary == null || data.heavy == null
                 || data.primary.Length > 128 || data.heavy.Length > 128 || data.discoveryId != DevelopmentIds.Retaliation) return false;
             bool primaryKnown = data.primary.Length == 0 || DevelopmentIds.IsPrimary(data.primary);
             bool heavyKnown = data.heavy == DevelopmentIds.Baseline || DevelopmentIds.IsPrimary(data.heavy);
+            if (!HeavyExperienceCatalog.Validate(data.heavyExperience, data.primary, primaryKnown)) return false;
             if (data.primary == DevelopmentIds.Baseline || data.primary == DevelopmentIds.Retaliation
                 || data.primaryPaid != (data.primary.Length > 0 ? 1 : 0) || data.retaliationPaid != (data.retaliationLearned ? 1 : 0)
                 || data.grantedPoints != 1 + (data.exchanges == 3 ? 1 : 0)
@@ -111,7 +138,9 @@ namespace EvolvingRPG.Progression
                 retainedHeavy = unresolved ? data.heavy : null,
                 ContentWarning = unresolved ? "Unknown development retained; baseline selected and evolution inactive. Original save is protected from overwrite." : ""
             };
-            message = unresolved ? state.ContentWarning : "Loaded legal character development; transient encounter state was not serialized.";
+            state.heavyExperience.UnionWith(data.heavyExperience);
+            message = (unresolved ? state.ContentWarning : "Loaded legal character development; transient encounter state was not serialized.")
+                + (migrated ? " Migrated schema 1 in memory with empty experience; explicit save writes schema 2. No past experience inferred." : "");
             return true;
         }
         public void RecordKnowledge(int exchanges)

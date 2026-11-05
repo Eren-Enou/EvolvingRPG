@@ -13,6 +13,12 @@ namespace EvolvingRPG.Progression
         public string primary, heavy, discoveryId;
         public int primaryPaid, retaliationPaid, exchanges, grantedPoints, pointBalance;
         public bool retaliationLearned, retaliationActive;
+        public string[] heavyExperience;
+        internal CharacterSaveData UpgradeLegacyExperience()
+        {
+            var upgraded = (CharacterSaveData)MemberwiseClone();
+            upgraded.schemaVersion = 2; upgraded.heavyExperience = Array.Empty<string>(); return upgraded;
+        }
     }
 
     // Local explicit safe-boundary saves. Does not serialize Unity objects or encounter state.
@@ -39,7 +45,12 @@ namespace EvolvingRPG.Progression
                 if (!json.TrimStart().StartsWith("{") || !json.TrimEnd().EndsWith("}")) { message = "Malformed save."; return false; }
                 var data = JsonUtility.FromJson<CharacterSaveData>(json);
                 if (data == null) { message = "Empty save."; return false; }
-                if (data.schemaVersion != 1) { protectedRecord = true; message = "Unsupported schema " + data.schemaVersion + "; original preserved."; return false; }
+                if (data.schemaVersion != 1 && data.schemaVersion != 2) { protectedRecord = true; message = "Unsupported schema " + data.schemaVersion + "; original preserved."; return false; }
+                if (data.schemaVersion == 1 && data.heavyExperience != null && data.heavyExperience.Length > 0)
+                { protectedRecord = true; message = "Unexpected history in legacy schema; original preserved pending migration."; return false; }
+                if (data.heavyExperience != null) foreach (string fact in data.heavyExperience)
+                    if (fact != null && !HeavyExperienceCatalog.Known(fact))
+                    { protectedRecord = true; message = "Unknown experience ID; original preserved pending migration."; return false; }
                 // An unknown rule is content we cannot interpret, not corruption to roll back.
                 // Falling through to an older backup could silently replace newer knowledge.
                 if (!string.IsNullOrEmpty(data.discoveryId) && data.discoveryId != DevelopmentIds.Retaliation)

@@ -30,6 +30,7 @@ namespace EvolvingRPG.Progression
                 var returnAction = character.GetComponent<RetaliatoryMomentumTrial>();
                 GUILayout.Label(returnAction.OpportunityReady ? "RETURN ARMED " + returnAction.SecondsRemaining.ToString("0.0") + "s: forward intent + RMB adds 0.4 m; neutral/lateral/backward keeps ordinary Momentum." : character.GetComponent<ContextualDiscovery>().Ledger.Diagnostic);
                 GUILayout.Label(character.Message);
+                GUILayout.Label(character.Experience.Latest);
                 GUILayout.EndArea(); return;
             }
             var previousColor = GUI.color; GUI.color = new Color(.07f, .09f, .12f, 1);
@@ -54,6 +55,8 @@ namespace EvolvingRPG.Progression
                 if (GUILayout.Button("Cancel save")) saveSlot = null;
             }
             scroll = GUILayout.BeginScrollView(scroll);
+            GUILayout.Label("CHARACTER EXPERIENCE / retained facts, not XP or power. " + state.ExperienceCount + " demonstrated. Save explicitly; R retains completed facts.");
+            GUILayout.Label(character.Experience.Latest);
             GUILayout.Label("Prototype rule: one Heavy discipline per character; no respec. One point initially; one additional, once-only fixture point on reveal. Compare another fresh character. Not a final economy.");
             Card(DevelopmentIds.Baseline, "Baseline Heavy: original commitment, 45 damage / 40 poise; no advance.");
             Card(DevelopmentIds.Breaker, "Breaker: planted 60 poise, 0.65 s windup / 0.85 s recovery; longer exposure. Purchase selects this Heavy.");
@@ -82,6 +85,13 @@ namespace EvolvingRPG.Progression
         {
             var state = character.State;
             GUILayout.BeginVertical(GUI.skin.box); GUILayout.Label(description);
+            if (id != DevelopmentIds.Retaliation && state.Owns(id))
+            {
+                string history = "Demonstrated: "; bool any = false;
+                foreach (string outcome in HeavyExperienceCatalog.Outcomes)
+                    if (state.HasExperience(id, outcome)) { history += (any ? ", " : "") + HeavyExperienceCatalog.Label(outcome); any = true; }
+                GUILayout.Label(history + (any ? "." : "none yet. Finish a Heavy in a live exchange; no enemy strike prerequisite."));
+            }
             GUILayout.Label(state.Owns(id) ? "Learned" + (state.Heavy == id || id == DevelopmentIds.Retaliation && state.RetaliationActive ? " / Active" : " / Inactive") : state.Eligibility(id));
             if (!state.Owns(id))
             {

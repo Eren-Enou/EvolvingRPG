@@ -24,6 +24,8 @@ Newest playable slice: open **Assets/Game/Scenes/DevelopmentTest.unity**, press 
 
 Focused combat/technique input and supported native progression/save checks pass. The economy and specialization rules are experimental; gameplay feel awaits player testing. Stamina remains deliberately permissive and unchanged. Existing evidence/discovery/trial scenes remain available as independent comparisons.
 
+After an exchange, R returns to spawn; Tab and scroll to **Recent attacks** to inspect actual impact, committed travel, observed displacement and recovery consequences. The review is session-only and grants no progress. See [the next three combat playtest questions](docs/NEXT_COMBAT_PLAYTESTS.md). **Tools > EvolvingRPG > Run Extended Regression Checks** runs the focused technical suites with Unity already open and Play stopped.
+
 ## Design and development
 
 The latest design focus is **depth within a selected discipline**. Read [Depth-first design](docs/DEPTH_FIRST_DESIGN.md) and [the Heavy discipline study](docs/HEAVY_DISCIPLINE_DEPTH_STUDY.md) before promoting more features from the broader design inventory.

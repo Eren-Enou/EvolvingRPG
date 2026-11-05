@@ -125,7 +125,7 @@ namespace EvolvingRPG.Editor
                         if (temporary != null) { UnityEngine.Object.DestroyImmediate(temporary); temporary = null; bystander = null; }
                         trial.enabled = true;
                         if (++test < 9) { stage = 0; wait = Time.time; return; }
-                        if (owner != null) hud.ResetEncounter();
+                        if (owner != null) { hud.ResetEncounter(); DevelopmentChecks.BeforeFresh(); }
                         Require((owner != null ? owner.FreshCharacter() : discovery.FreshCharacter()) && !trial.TrialEnabled && !trial.OpportunityReady
                             && !discovery.MomentumInvestment && (owner != null || !discovery.EvasiveInvestment) && discovery.Ledger.Knowledge == DiscoveryKnowledge.Undiscovered, "fresh character inherited trial or knowledge");
                         File.AppendAllText(Report, "PASS Fresh Character clears knowledge, investments and trial activation.\n");

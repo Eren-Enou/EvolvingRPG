@@ -65,7 +65,7 @@ namespace EvolvingRPG.Combat
         public AttackSnapshot Resolve(AttackDefinition definition, AttackSnapshot authored)
         {
             return definition == discovery.Momentum && Eligible() && ForwardIntent
-                ? authored.WithAdvance(authored.AdvanceDistance + addedAdvance, authored.DisplayName + " / Retaliatory trial") : authored;
+                ? authored.WithAdvance(authored.AdvanceDistance + addedAdvance, authored.DisplayName + (discovery.Development != null ? " / Retaliatory Momentum" : " / Retaliatory trial")) : authored;
         }
         public AttackCommitment? Accepted(AttackDefinition definition, AttackSnapshot committed)
         {

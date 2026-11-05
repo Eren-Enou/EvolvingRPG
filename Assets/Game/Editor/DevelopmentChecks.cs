@@ -10,7 +10,7 @@ namespace EvolvingRPG.Editor
     public static class DevelopmentChecks
     {
         [MenuItem("Tools/EvolvingRPG/Run Character Development Checks")]
-        public static void Run() { Models(); DiscoveryChecks.RunDevelopment(); }
+        public static void Run() { Models(); CharacterSaveChecks.Run(); DiscoveryChecks.RunDevelopment(); }
         static void Models()
         {
             Directory.CreateDirectory("Logs"); File.WriteAllText("Logs/DevelopmentChecks.txt", "Character development checks\n");
@@ -42,6 +42,7 @@ namespace EvolvingRPG.Editor
             File.AppendAllText("Logs/DevelopmentChecks.txt", "PASS live native discovery reveals only knowledge; separate purchase spends the evolution grant; explicit activation required; debug investment/trial bypass rejected.\n");
             RetaliationChecks.Begin();
         }
+        public static void BeforeFresh() => CharacterSaveChecks.NativeRoundtrip();
         public static void Finished()
             => File.AppendAllText("Logs/DevelopmentChecks.txt", "PASS all ownership checks including nine owned native retaliation cases and fresh-character reset.\n");
         static void Require(bool condition, string message) { if (!condition) throw new InvalidOperationException(message); }

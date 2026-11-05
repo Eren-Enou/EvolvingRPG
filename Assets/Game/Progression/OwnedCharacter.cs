@@ -18,6 +18,8 @@ namespace EvolvingRPG.Progression
         PlayerInput playerInput;
         Vector3 spawn;
         bool menu, previousMouseLook, previousInput;
+        CharacterSaveStore saves;
+        public string SaveLocation => saves?.Location;
         readonly InputAction inspect = new InputAction("InspectDevelopment", InputActionType.Button, "<Keyboard>/tab");
         public CharacterDevelopmentState State { get; private set; }
         public string Message { get; private set; } = "One experimental point: inspect Breaker or Momentum with Tab at spawn.";
@@ -34,6 +36,7 @@ namespace EvolvingRPG.Progression
             actions = GetComponent<CombatActions>(); discovery = GetComponent<ContextualDiscovery>(); trial = GetComponent<RetaliatoryMomentumTrial>();
             mouseLook = GetComponent<PlaygroundMouseLook>(); playerInput = GetComponent<PlayerInput>();
             State = new CharacterDevelopmentState(); spawn = transform.position;
+            saves = new CharacterSaveStore(System.IO.Path.Combine(Application.persistentDataPath, "CharacterDevelopmentPrototype"));
         }
         void Start()
         {
@@ -64,6 +67,22 @@ namespace EvolvingRPG.Progression
             if (!CanDevelop) { Message = "Return to spawn with R before creating a fresh character."; return false; }
             State = new CharacterDevelopmentState(); discovery.RestoreCharacterKnowledge(0); Apply();
             Message = "Fresh character: no knowledge, purchases or active evolution. Unsaved previous character was replaced."; return true;
+        }
+        #if UNITY_EDITOR
+        public void UseTestSaveDirectory(string path) => saves = new CharacterSaveStore(path);
+        #endif
+        public bool SaveSlot(string slot)
+        {
+            if (!CanDevelop) { Message = "Save only at safe spawn while ready."; return false; }
+            bool success = saves.Save(slot, State, out string message); Message = message; return success;
+        }
+        public bool LoadSlot(string slot)
+        {
+            if (!CanDevelop) { Message = "Load only at safe spawn while ready."; return false; }
+            if (!saves.Load(slot, out var loaded, out string message)) { Message = message; return false; }
+            // Validate first; only then replace live state and reset the whole encounter.
+            encounter.ResetEncounter(); State = loaded;
+            discovery.RestoreCharacterKnowledge(State.Exchanges); Apply(); Message = message; return true;
         }
         void Apply()
         {

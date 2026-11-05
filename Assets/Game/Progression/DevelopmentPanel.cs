@@ -8,24 +8,36 @@ namespace EvolvingRPG.Progression
         string preview;
         int previewRevision;
         bool confirmFresh;
+        string saveSlot, saveCharacter;
         Vector2 scroll;
         public void Configure(OwnedCharacter owner) => character = owner;
         void OnGUI()
         {
+            bool wrap = GUI.skin.label.wordWrap; int depth = GUI.depth;
+            try { GUI.skin.label.wordWrap = true; if (character != null && character.MenuOpen) GUI.depth = -20; Draw(); }
+            finally { GUI.skin.label.wordWrap = wrap; GUI.depth = depth; }
+        }
+        void Draw()
+        {
             if (character == null || character.State == null) return;
             var state = character.State; var actions = character.GetComponent<CombatActions>();
-            GUILayout.BeginArea(new Rect(12, 12, Mathf.Min(760, Screen.width - 24), character.MenuOpen ? Screen.height - 30 : 170), GUI.skin.box);
+            if (!character.MenuOpen)
+            {
+                GUILayout.BeginArea(new Rect(12, 12, Mathf.Min(760, Screen.width - 24), 185), GUI.skin.box);
+                GUILayout.Label("CHARACTER DEVELOPMENT | " + DevelopmentIds.Label(state.Heavy) + " | points " + state.Balance + " | Tab inspect at spawn / R reset");
+                GUILayout.Label($"{actions.Phase} | HP {character.GetComponent<CombatVitality>().Health:0} | stamina {character.GetComponent<CombatStamina>().Current:0} | {actions.Message}");
+                GUILayout.Label("Knowledge: " + state.Knowledge + " (" + state.Exchanges + "/3) | return learned: " + state.RetaliationLearned + " / active: " + state.RetaliationActive);
+                var returnAction = character.GetComponent<RetaliatoryMomentumTrial>();
+                GUILayout.Label(returnAction.OpportunityReady ? "RETURN ARMED " + returnAction.SecondsRemaining.ToString("0.0") + "s: forward intent + RMB adds 0.4 m; neutral/lateral/backward keeps ordinary Momentum." : character.GetComponent<ContextualDiscovery>().Ledger.Diagnostic);
+                GUILayout.Label(character.Message);
+                GUILayout.EndArea(); return;
+            }
+            GUILayout.BeginArea(new Rect(12, 12, Mathf.Min(760, Screen.width - 24), Screen.height - 30), GUI.skin.box);
             GUILayout.Label("OWNED CHARACTER / experimental specialization / Tab inspect at spawn / R encounter reset");
-            GUILayout.Label($"Character {state.CharacterId.Substring(0, 8)} | points {state.Balance}/{state.Granted} granted | selected {state.Heavy}");
+            GUILayout.Label($"Character {state.CharacterId.Substring(0, 8)} | points {state.Balance}/{state.Granted} granted | selected {DevelopmentIds.Label(state.Heavy)}");
             GUILayout.Label($"{actions.Phase} | {actions.Message} | HP {character.GetComponent<CombatVitality>().Health:0} | stamina {character.GetComponent<CombatStamina>().Current:0}");
             GUILayout.Label("Knowledge: " + state.Knowledge + " | qualifying exchanges " + state.Exchanges + "/3 | learned return: " + state.RetaliationLearned + " | active: " + state.RetaliationActive);
             GUILayout.Label(character.Message);
-            if (!character.MenuOpen)
-            {
-                GUILayout.Label(character.GetComponent<ContextualDiscovery>().Ledger.Diagnostic);
-                GUILayout.Label("WASD / Q,E | Space | Shift dodge | mouse look/wheel | LMB / RMB. Debug 1/2/3 and F2/F4/F5/F8 do not grant power here.");
-                GUILayout.EndArea(); return;
-            }
             scroll = GUILayout.BeginScrollView(scroll);
             GUILayout.Label("Prototype rule: one Heavy discipline per character; no respec. One point initially; one additional, once-only fixture point on reveal. Compare another fresh character. Not a final economy.");
             Card(DevelopmentIds.Baseline, "Baseline Heavy: original commitment, 45 damage / 40 poise; no advance.");
@@ -36,12 +48,25 @@ namespace EvolvingRPG.Progression
             else Card(DevelopmentIds.Retaliation, "Retaliatory Momentum: after verified evasion, forward intent + RMB adds 0.4 m. +0.25 s recovery unless the linked opponent generation is hit. Learning does not activate it.");
             if (preview != null)
             {
-                GUILayout.Label("Confirm spending 1 point on: " + preview + " (preview revision " + previewRevision + ")");
+                GUILayout.Label("Confirm spending 1 point on: " + DevelopmentIds.Label(preview) + " (preview revision " + previewRevision + ")");
                 if (GUILayout.Button("Confirm investment")) { character.Purchase(preview, previewRevision); preview = null; }
                 if (GUILayout.Button("Cancel preview")) preview = null;
             }
             if (GUILayout.Button(confirmFresh ? "Confirm fresh character (unsaved current character replaced)" : "Create fresh experimental character"))
-            { if (confirmFresh) { character.FreshCharacter(); confirmFresh = false; preview = null; } else confirmFresh = true; }
+            { if (confirmFresh) { character.FreshCharacter(); confirmFresh = false; preview = saveSlot = null; } else confirmFresh = true; }
+            foreach (string slot in new[] { "A", "B" })
+            {
+                if (GUILayout.Button("Save current character to slot " + slot)) { saveSlot = slot; saveCharacter = state.CharacterId; }
+                if (GUILayout.Button("Load slot " + slot + " (replaces unsaved current character)")) { character.LoadSlot(slot); preview = saveSlot = null; }
+            }
+            if (saveSlot != null)
+            {
+                GUILayout.Label("Confirm saving character " + saveCharacter.Substring(0, 8) + " to " + saveSlot + ". Existing supported slot becomes the backup.");
+                if (GUILayout.Button("Confirm save / overwrite supported slot")) { if (character.State.CharacterId == saveCharacter) character.SaveSlot(saveSlot); saveSlot = null; }
+                if (GUILayout.Button("Cancel save")) saveSlot = null;
+            }
+            GUILayout.Label("Local save folder: " + character.SaveLocation);
+            if (state.HasUnresolvedContent) GUILayout.Label(state.ContentWarning);
             GUILayout.Label("Journal: invested Momentum + verified evasion + successful same-opponent Momentum within 1.5 s of dodge recovery + full Heavy recovery. Three distinct strikes reveal; no empty defensive talent is sold.");
             foreach (var entry in character.GetComponent<ContextualDiscovery>().Ledger.Journal) GUILayout.Label(entry);
             GUILayout.EndScrollView(); GUILayout.EndArea();

@@ -32,7 +32,7 @@ namespace EvolvingRPG.Combat
             if (sequence <= lastDodge) return;
             lastDodge = sequence;
             pending = new Exchange { Dodge = sequence, Eligible = prerequisites, Version = investmentVersion };
-            Diagnostic = prerequisites ? "Collecting defensive evidence." : "Missing experimental Momentum / evasive investment.";
+            Diagnostic = prerequisites ? "Collecting defensive evidence." : "Requires invested Momentum and qualifying defensive experience.";
         }
         public void CompleteDodge(int sequence, float time)
         {

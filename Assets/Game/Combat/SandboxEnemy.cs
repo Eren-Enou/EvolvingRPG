@@ -60,8 +60,12 @@ namespace EvolvingRPG.Combat
             if (fast) { speed = 3.6f; turnSpeed = 180; windup = 0.45f; activeTime = 0.12f; recovery = 0.7f; damage = 12; poiseDamage = 12; }
             ObserveTarget();
         }
-        private void Awake()
+        private bool initialized;
+        private void Awake() => Initialize();
+        private void Initialize()
         {
+            if (initialized) return;
+            initialized = true;
             motor = GetComponent<CharacterController>(); vitality = GetComponent<EnemyVitality>();
             home = transform.position; homeFacing = transform.rotation;
             committedFacing = homeFacing;
@@ -206,6 +210,7 @@ namespace EvolvingRPG.Combat
         }
         public void ResetEnemy()
         {
+            Initialize();
             FinishThreat(ThreatEnd.Reset);
             LastCommittedThreat = null;
             motor.enabled = false; transform.SetPositionAndRotation(home, homeFacing); motor.enabled = true;

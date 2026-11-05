@@ -23,7 +23,8 @@ Read `docs/VISION.md` and `docs/MILESTONES.md` before making changes.
 
 ## Current assignment
 
-The user's overnight assignment authorizes V0.4 C1 -> C2 -> C3, with D as a gated stretch. Validate each stage before proceeding. Safe automated Unity testing is authorized; never launch another Editor against an open project or interrupt unsaved user edits. Inspect running processes before exclusive batch tests.
+Continue the user's character-ownership/progression goal, after validation gates. On 2026-11-05 the existing focused Editor combat suite (26 cases) and full technique suite including number-row event checks passed. These are technical results, not player feel validation.
 
-Preserve existing scenes, attack assets, controls, balance, stamina, third-party assets, Packages and ProjectSettings. Keep discoveries distinct from ownership. Do not add unrelated systems. C1 must distinguish real, harmless and ambiguous evasions before discovery depends on it. See docs/OVERNIGHT_PROGRESS_REPORT.md for actual status, executed checks and next steps; no gameplay feel is established by automated checks.
-Overnight result: C1/C2/C3 implemented; supported Unity checks passed. Preserve the three separate evidence/discovery/trial scenes and session-only knowledge versus power distinction. D is not implemented: complete focused input regressions and player comparison before actual investment/save work. Never rebalance stamina as a workaround for prototype feedback.
+Implement the smallest isolated V0.4 D ownership/spending slice, then minimal versioned persistence only after ownership checks pass. Preserve earlier comparison scenes, controls, attack assets, stamina, third-party code, Packages and ProjectSettings. Replace the empty defensive investment prerequisite with verified defensive experience in the owned-character scene; do not sell an empty support talent. Discovery, ownership and activation remain distinct.
+
+Safe Unity tests are authorized. Never launch a second Editor against an open project, interrupt a user Play session, or overwrite unsaved edits. New scene authoring must use explicit Editor APIs. Report exact checks, limitations, commits, launch steps and future decisions in docs/CONTINUED_DEVELOPMENT_REPORT.md. Experimental budgets and specialization restrictions are not final release rules.

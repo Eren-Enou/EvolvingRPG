@@ -34,6 +34,16 @@ namespace EvolvingRPG.Editor
             var future = a.Export(); future.schemaVersion = 99; File.WriteAllText(path, JsonUtility.ToJson(future)); string original = File.ReadAllText(path);
             Require(!store.Load("A", out _, out _) && !store.Save("A", a, out _) && File.ReadAllText(path) == original, "future schema downgraded/overwritten");
             Pass("Corrupt latest recovers complete prior state; damaged originals and unsupported future schemas remain untouched");
+            var unknownRule = a.Export(); unknownRule.discoveryId = "warrior.heavy.future_return";
+            File.WriteAllText(path, JsonUtility.ToJson(unknownRule)); original = File.ReadAllText(path);
+            Require(!store.Load("A", out _, out string ruleReason) && ruleReason.Contains("Unknown discovery rule")
+                && !store.Save("A", a, out _) && File.ReadAllText(path) == original,
+                "unknown discovery silently downgraded to backup or was overwritten");
+            File.WriteAllText(path, legal); File.WriteAllText(path + ".bak", JsonUtility.ToJson(unknownRule));
+            Require(store.Load("A", out _, out _) && !store.Save("A", a, out _) && File.ReadAllText(path) == legal,
+                "unknown discovery backup was overwritten");
+            File.WriteAllText(path + ".bak", legal);
+            Pass("Unknown discovery IDs protect latest and backup records without silent rollback or overwrite");
             var missing = a.Export(); missing.primary = "warrior.heavy.missing_momentum"; missing.heavy = missing.primary;
             File.WriteAllText(path, JsonUtility.ToJson(missing)); original = File.ReadAllText(path);
             Require(store.Load("A", out var unresolved, out _) && unresolved.HasUnresolvedContent && unresolved.Primary == missing.primary
@@ -63,8 +73,8 @@ namespace EvolvingRPG.Editor
             owner.ConfigureHeavy(DevelopmentIds.Baseline, false);
             Require(owner.LoadSlot("A") && owner.State.CharacterId == originalId && owner.State.RetaliationActive && owner.State.Balance == 0
                 && actor.HeavyAttack == discovery.Momentum && discovery.Ledger.Knowledge == DiscoveryKnowledge.Revealed
-                && !trial.OpportunityReady && !actor.CommittedContext.HasValue && !actor.Busy, "native load did not restore build safely");
-            Require(owner.FreshCharacter() && owner.SaveSlot("B"), "fresh second save failed"); string freshId = owner.State.CharacterId;
+                && !trial.OpportunityReady && !actor.CommittedContext.HasValue && !actor.Busy && owner.Review.Count == 0, "native load did not restore build safely");
+            Require(owner.FreshCharacter() && owner.Review.Count == 0 && owner.SaveSlot("B"), "fresh second save failed"); string freshId = owner.State.CharacterId;
             Require(owner.LoadSlot("A") && owner.State.CharacterId == originalId && owner.LoadSlot("B") && owner.State.CharacterId == freshId
                 && owner.State.Primary.Length == 0 && owner.State.Exchanges == 0 && !owner.State.RetaliationLearned && owner.State.Balance == 1, "native slots inherited state");
             Require(owner.LoadSlot("A"), "restore original for final reset test failed");

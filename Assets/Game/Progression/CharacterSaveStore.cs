@@ -40,6 +40,10 @@ namespace EvolvingRPG.Progression
                 var data = JsonUtility.FromJson<CharacterSaveData>(json);
                 if (data == null) { message = "Empty save."; return false; }
                 if (data.schemaVersion != 1) { protectedRecord = true; message = "Unsupported schema " + data.schemaVersion + "; original preserved."; return false; }
+                // An unknown rule is content we cannot interpret, not corruption to roll back.
+                // Falling through to an older backup could silently replace newer knowledge.
+                if (!string.IsNullOrEmpty(data.discoveryId) && data.discoveryId != DevelopmentIds.Retaliation)
+                { protectedRecord = true; message = "Unknown discovery rule " + data.discoveryId + "; original preserved pending migration."; return false; }
                 bool valid = CharacterDevelopmentState.TryRestore(data, out state, out message);
                 protectedRecord = valid && state.HasUnresolvedContent;
                 return valid;

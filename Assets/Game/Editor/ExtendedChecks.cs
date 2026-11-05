@@ -13,7 +13,14 @@ namespace EvolvingRPG.Editor
     {
         const string Active = "EvolvingRPG.Extended.Active", Stage = "EvolvingRPG.Extended.Stage";
         const string Report = "Logs/ExtendedChecks.txt";
-        static readonly string[] Reports = { "CombatPlayModeChecks", "TechniquePlayModeChecks", "EvasionEvidenceChecks", "EnemyPlayModeChecks", "PracticePlayModeChecks", "AttackSnapshotChecks", "DiscoveryChecks", "RetaliationChecks", "DevelopmentChecks", "DevelopmentPanelInputChecks" };
+        static readonly string[] Reports = { "CombatPlayModeChecks", "TechniquePlayModeChecks", "EvasionEvidenceChecks", "EnemyPlayModeChecks", "PracticePlayModeChecks", "AttackSnapshotChecks", "DiscoveryChecks", "RetaliationChecks", "DevelopmentChecks", "DevelopmentPanelInputChecks", "StrafingPlayModeChecks" };
+        static readonly string[] Completed = {
+            "PASS: no runtime Console errors captured.", "PASS: all motor checks; no runtime Console errors captured.",
+            "PASS all C1 checks; no runtime Console errors captured.", "PASS: live smoke; no runtime Console errors captured.",
+            "PASS: live practice; no runtime Console errors captured.", "PASS: all checks; no runtime Console errors captured.",
+            "PASS All C2 checks; no runtime Console errors", "PASS all C3 native checks; no runtime Console errors.",
+            "PASS all ownership checks including nine owned native retaliation cases and fresh-character reset.",
+            "PASS Exit Play mode with panel open: no runtime teardown errors.", "PASS: no runtime Console errors captured." };
         static ExtendedChecks() { EditorApplication.playModeStateChanged += Changed; EditorApplication.update += Tick; }
 
         [MenuItem("Tools/EvolvingRPG/Run Extended Regression Checks %#F11")]
@@ -52,6 +59,9 @@ namespace EvolvingRPG.Editor
                     case 7: RetaliationChecks.Run(); break;
                     case 8: DevelopmentChecks.Run(); break;
                     case 9: DevelopmentPanelInputChecks.RunExitChecks(); break;
+                    case 10:
+                        EditorSceneManager.OpenScene(MovementPlaygroundBuilder.ScenePath);
+                        StrafingPlayModeChecks.Run(); break;
                 }
             }
             catch (Exception e) { Finish(false, e.ToString()); }
@@ -69,7 +79,7 @@ namespace EvolvingRPG.Editor
             if (!SessionState.GetBool(Active, false)) return;
             int stage = SessionState.GetInt(Stage, 0); string path = "Logs/" + Reports[stage] + ".txt";
             string result = File.Exists(path) ? File.ReadAllText(path) : "Missing report";
-            if (!result.Contains("PASS") || result.Contains("FAIL") || result.Contains("Exception:") || result.Contains("SKIP"))
+            if (!result.Contains(Completed[stage]) || result.Contains("FAIL") || result.Contains("Exception:") || result.Contains("SKIP"))
             { Finish(false, Reports[stage] + ": incomplete, failed or skipped; inspect " + path); return; }
             File.AppendAllText(Report, "PASS " + Reports[stage] + "\n");
             SessionState.SetInt(Stage, stage + 1); EditorApplication.delayCall += Next;

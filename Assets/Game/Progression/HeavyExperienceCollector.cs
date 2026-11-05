@@ -73,10 +73,14 @@ namespace EvolvingRPG.Progression
                 if (candidate.Resolution.PoiseBroken && candidate.Resolution.EnemyContext.Value.PhaseBeforeHit == EnemyPhase.Windup)
                     facts.Add(HeavyExperienceCatalog.Id(profile, HeavyExperienceCatalog.Interception));
             }
+            var newLabels = new List<string>(3);
+            foreach (string outcome in HeavyExperienceCatalog.Outcomes)
+                if (facts.Contains(HeavyExperienceCatalog.Id(profile, outcome)) && !acceptedCharacter.HasExperience(profile, outcome))
+                    newLabels.Add(HeavyExperienceCatalog.Label(outcome));
             int added = acceptedCharacter.RecordExperience(facts);
             Latest = facts.Count == 0 ? "Heavy experience not recorded: " + rejection + "."
                 : added == 0 ? "Heavy experience already demonstrated for " + DevelopmentIds.Label(profile) + "; no repeated credit."
-                : "Heavy experience: " + DevelopmentIds.Label(profile) + " recorded " + added + " new fact(s). History only; no bonus or points.";
+                : "Heavy experience: " + DevelopmentIds.Label(profile) + " demonstrated " + string.Join(", ", newLabels) + ". History only; no bonus or points.";
             Discard();
         }
         string Reject(CombatObservation hit)

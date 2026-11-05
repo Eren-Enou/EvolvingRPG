@@ -18,12 +18,16 @@ namespace EvolvingRPG.Editor
         const BindingFlags Private = BindingFlags.NonPublic | BindingFlags.Instance;
         static HeavyExperienceChecks() => EditorApplication.playModeStateChanged += Changed;
         [MenuItem("Tools/EvolvingRPG/Run Heavy Experience Checks %#&F7")]
-        public static void Run()
+        public static void Run() => RunMode(false);
+        [MenuItem("Tools/EvolvingRPG/Inspect Heavy Experience Fixture %#&F6")]
+        public static void Inspect() => RunMode(true);
+        static void RunMode(bool inspect)
         {
             if (EditorApplication.isPlayingOrWillChangePlaymode) throw new InvalidOperationException("Stop Play first.");
             for (int i = 0; i < SceneManager.sceneCount; i++) if (SceneManager.GetSceneAt(i).isDirty) throw new InvalidOperationException("Save scene edits first.");
             EditorSceneManager.OpenScene(DevelopmentSandboxBuilder.ScenePath);
             Directory.CreateDirectory("Logs"); File.WriteAllText(Report, "Unity " + Application.unityVersion + " / Heavy experience history\n");
+            SessionState.SetBool("EvolvingRPG.HeavyExperienceInspect", inspect);
             SessionState.SetBool(Requested, true); EditorApplication.EnterPlaymode();
         }
         static void Changed(PlayModeStateChange change)
@@ -92,6 +96,7 @@ namespace EvolvingRPG.Editor
             int test = 0, stage = 0, frame = -1; float wait = Time.time; bool hadHit = false; CombatObservation firstHit = default;
             GameObject dummy = null; double deadline = EditorApplication.timeSinceStartup + 120;
             var errors = new System.Collections.Generic.List<string>();
+            bool failed = false, inspect = SessionState.GetBool("EvolvingRPG.HeavyExperienceInspect", false);
             Application.LogCallback capture = (message, stack, type) => { if (type == LogType.Error || type == LogType.Exception || type == LogType.Assert) errors.Add(message + "\n" + stack); };
             Action<CombatObservation> receipt = value => { if (value.Kind == CombatObservationKind.HitResolved && !hadHit) { firstHit = value; hadHit = true; } };
             actor.Observed += receipt; Application.logMessageReceived += capture;
@@ -150,14 +155,17 @@ namespace EvolvingRPG.Editor
                     if (dummy != null) { UnityEngine.Object.DestroyImmediate(dummy); dummy = null; }
                     if (++test < 8) { stage = 0; wait = Time.time; return; }
                     hud.ResetEncounter(); Require(owner.LoadSlot("B") && owner.State.ExperienceCount == 0, "second character inherited history");
+                    if (inspect) Require(owner.LoadSlot("A") && owner.TryOpenMenu() && owner.State.ExperienceCount == 3,
+                        "inspection fixture failed to open safe-spawn panel on the genuinely experienced character");
                     if (errors.Count > 0) throw new InvalidOperationException(string.Join("\n", errors));
                     Pass("All Heavy experience model/native checks; no runtime Console errors. History is not a gameplay-feel result.");
                 }
-                catch (Exception e) { File.AppendAllText(Report, "FAIL " + e + "\n"); }
+                catch (Exception e) { failed = true; File.AppendAllText(Report, "FAIL " + e + "\n"); }
                 if (dummy != null) UnityEngine.Object.DestroyImmediate(dummy);
                 actor.Observed -= receipt; Application.logMessageReceived -= capture; EditorApplication.update -= tick;
                 home.SetValue(enemy, originalHome); hud.ResetEncounter(); Time.captureDeltaTime = oldStep; Application.runInBackground = oldBackground;
-                EditorApplication.ExitPlaymode();
+                if (!inspect || failed) EditorApplication.ExitPlaymode();
+                else Debug.Log("Heavy experience fixture passed. Real Breaker history is inspectable; exit Play mode when finished. No user save was written.");
             };
             EditorApplication.update += tick;
         }

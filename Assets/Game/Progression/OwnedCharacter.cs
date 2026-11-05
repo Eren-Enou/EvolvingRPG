@@ -112,16 +112,18 @@ namespace EvolvingRPG.Progression
             if (inspect.WasPressedThisFrame())
             {
                 if (menu) CloseMenu();
-                else if (CanDevelop)
-                {
-                    previousMouseLook = mouseLook != null && mouseLook.enabled; previousInput = playerInput != null && playerInput.inputIsActive;
-                    if (mouseLook != null) mouseLook.enabled = false;
-                    if (playerInput != null) playerInput.DeactivateInput();
-                    var input = GetComponent<StarterAssetsInputs>(); input.move = input.look = Vector2.zero; input.jump = input.sprint = false;
-                    menu = true; Cursor.lockState = CursorLockMode.None; Cursor.visible = true;
-                }
-                else Message = "Inspect at the safe spawn: press R first. Combat continues normally.";
+                else TryOpenMenu();
             }
+        }
+        public bool TryOpenMenu()
+        {
+            if (menu) return true;
+            if (!CanDevelop) { Message = "Inspect at the safe spawn: press R first. Combat continues normally."; return false; }
+            previousMouseLook = mouseLook != null && mouseLook.enabled; previousInput = playerInput != null && playerInput.inputIsActive;
+            if (mouseLook != null) mouseLook.enabled = false;
+            if (playerInput != null) playerInput.DeactivateInput();
+            var input = GetComponent<StarterAssetsInputs>(); input.move = input.look = Vector2.zero; input.jump = input.sprint = false;
+            menu = true; Cursor.lockState = CursorLockMode.None; Cursor.visible = true; return true;
         }
         public void CloseMenu()
         {

@@ -16,7 +16,8 @@ namespace EvolvingRPG.Combat
         int dodgeSequence = -1, fixtureVersion;
         float dodgeCompletedAt, expiresAt;
         readonly InputAction toggle = new InputAction("RetaliationTrial", InputActionType.Button, "<Keyboard>/f2");
-        public bool TrialEnabled { get; private set; }
+        bool trialEnabled;
+        public bool TrialEnabled => discovery != null && discovery.Development != null ? discovery.Development.RetaliationActive : trialEnabled;
         public int Consumed { get; private set; }
         public string Diagnostic { get; private set; } = "Reveal the connection before enabling the optional F2 trial.";
         public float AddedAdvance => addedAdvance;
@@ -30,11 +31,11 @@ namespace EvolvingRPG.Combat
             evidence = GetComponent<EvasionEvidence>(); inputs = GetComponent<StarterAssetsInputs>(); vitality = GetComponent<CombatVitality>();
         }
         void OnEnable() { actions.Observed += OnAction; evidence.Observed += OnEvidence; vitality.ResetPerformed += ResetOpportunity; discovery.FreshCharacterStarted += FreshCharacter; toggle.Enable(); }
-        void OnDisable() { actions.Observed -= OnAction; evidence.Observed -= OnEvidence; vitality.ResetPerformed -= ResetOpportunity; discovery.FreshCharacterStarted -= FreshCharacter; TrialEnabled = false; ResetOpportunity(); toggle.Disable(); }
+        void OnDisable() { actions.Observed -= OnAction; evidence.Observed -= OnEvidence; vitality.ResetPerformed -= ResetOpportunity; discovery.FreshCharacterStarted -= FreshCharacter; trialEnabled = false; ResetOpportunity(); toggle.Disable(); }
         public bool SetTrialEnabled(bool enabled)
         {
-            if (actions.Busy || actions.MovementBlocked || enabled && discovery.Ledger.Knowledge != DiscoveryKnowledge.Revealed) return false;
-            TrialEnabled = enabled; ResetOpportunity(); Diagnostic = enabled
+            if (discovery.Development != null || actions.Busy || actions.MovementBlocked || enabled && discovery.Ledger.Knowledge != DiscoveryKnowledge.Revealed) return false;
+            trialEnabled = enabled; ResetOpportunity(); Diagnostic = enabled
                 ? "TRIAL ON: verified evasion arms one longer return. Forward intent + RMB opts in; neutral/strafe/backward uses ordinary Momentum."
                 : "TRIAL OFF: ordinary Momentum.";
             return true;
@@ -91,7 +92,8 @@ namespace EvolvingRPG.Combat
             opportunity = value.Threat; fixtureVersion = discovery.InvestmentVersion;
             Diagnostic = "Return armed for " + value.Threat.Value.Label + ". Forward intent + RMB requests +0.4 m; neutral/strafe/backward keeps ordinary Momentum.";
         }
-        void FreshCharacter() { TrialEnabled = false; ResetOpportunity(); Diagnostic = "Fresh character: trial disabled; discover the connection again."; }
+        void FreshCharacter() { trialEnabled = false; ResetOpportunity(); Diagnostic = "Fresh character: trial disabled; discover the connection again."; }
+        public void InvalidateOpportunity() => ResetOpportunity();
         void ResetOpportunity() { opportunity = null; dodgeSequence = -1; expiresAt = float.NegativeInfinity; }
     }
 }

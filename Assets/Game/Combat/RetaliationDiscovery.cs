@@ -16,6 +16,7 @@ namespace EvolvingRPG.Combat
             public EvasionResult? Evidence;
             public readonly List<(SandboxEnemy source, int revision)> Hits = new List<(SandboxEnemy, int)>();
         }
+        public event System.Action Changed;
         Exchange pending;
         int lastDodge = -1;
         readonly HashSet<EnemyThreat> used = new HashSet<EnemyThreat>();
@@ -80,6 +81,14 @@ namespace EvolvingRPG.Combat
             Diagnostic = "Fresh session character; knowledge and fixtures cleared.";
             // Action sequences remain monotonic on the live actor.
         }
+        public void RestoreKnowledge(int exchanges)
+        {
+            FreshCharacter();
+            Exchanges = Mathf.Clamp(exchanges, 0, 3);
+            Knowledge = Exchanges >= 3 ? DiscoveryKnowledge.Revealed : Exchanges > 0 ? DiscoveryKnowledge.Foreshadowed : DiscoveryKnowledge.Undiscovered;
+            if (Exchanges > 0) journal.Enqueue("Retained character knowledge: verified evasive Momentum exchanges. No transient threats or opportunities restored.");
+            Changed?.Invoke();
+        }
         void Evaluate()
         {
             if (pending == null || !pending.AttackComplete || !pending.Evidence.HasValue) return;
@@ -100,6 +109,7 @@ namespace EvolvingRPG.Combat
             journal.Enqueue("At " + pending.CompletedAt.ToString("0.00") + "s: " + message + " Evidence: " + key.Label + ", dodge #" + pending.Dodge + ", Heavy #" + pending.Attack + ".");
             Diagnostic = "Qualified exchange " + Exchanges + ": same opponent, on-time acceptance, applied impact and completed recovery.";
             pending = null;
+            Changed?.Invoke();
         }
         void Reject(string reason) { pending = null; Diagnostic = reason; }
     }

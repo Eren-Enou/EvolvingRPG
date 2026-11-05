@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using EvolvingRPG.Progression;
 
 namespace EvolvingRPG.Combat
 {
@@ -9,6 +10,9 @@ namespace EvolvingRPG.Combat
         [SerializeField] AttackDefinition momentum;
         [SerializeField, Min(0.1f)] float counterWindow = 1.5f;
         [SerializeField] bool momentumInvestment, evasiveInvestment;
+        [SerializeField] MonoBehaviour developmentSource;
+        public ICharacterDevelopment Development => developmentSource as ICharacterDevelopment;
+        public void ConfigureDevelopment(MonoBehaviour source) => developmentSource = source;
         CombatActions actions;
         CombatVitality vitality;
         EvasionEvidence evidence;
@@ -19,11 +23,11 @@ namespace EvolvingRPG.Combat
         readonly InputAction investEvasion = new InputAction("EvasionFixture", InputActionType.Button, "<Keyboard>/f5");
         readonly InputAction fresh = new InputAction("FreshDiscoveryCharacter", InputActionType.Button, "<Keyboard>/f8");
         public RetaliationDiscovery Ledger { get; private set; }
-        public bool MomentumInvestment => momentumInvestment;
-        public bool EvasiveInvestment => evasiveInvestment;
+        public bool MomentumInvestment => Development != null ? Development.MomentumOwned : momentumInvestment;
+        public bool EvasiveInvestment => Development != null || evasiveInvestment;
         public AttackDefinition Momentum => momentum;
         public float Window => Ledger != null ? Ledger.Window : counterWindow;
-        public int InvestmentVersion => investmentVersion;
+        public int InvestmentVersion => Development != null ? Development.BuildRevision : investmentVersion;
         public void Configure(AttackDefinition definition) { momentum = definition; }
         void Awake()
         {
@@ -44,20 +48,26 @@ namespace EvolvingRPG.Combat
         }
         public bool SetInvestments(bool advancing, bool defensive)
         {
-            if (actions.Busy || actions.MovementBlocked) return false;
+            if (Development != null || actions.Busy || actions.MovementBlocked) return false;
             if (advancing == momentumInvestment && defensive == evasiveInvestment) return true;
             momentumInvestment = observedMomentum = advancing; evasiveInvestment = observedEvasion = defensive; investmentVersion++;
             Ledger.Invalidate("Experimental investment fixture changed; pending exchange discarded."); return true;
         }
         public bool FreshCharacter()
         {
-            if (actions.Busy || actions.MovementBlocked) return false;
+            if (Development != null || actions.Busy || actions.MovementBlocked) return false;
             momentumInvestment = evasiveInvestment = observedMomentum = observedEvasion = false; investmentVersion++; Ledger.FreshCharacter();
             FreshCharacterStarted?.Invoke(); return true;
         }
+        public void RestoreCharacterKnowledge(int exchanges)
+        {
+            if (actions.Busy) throw new System.InvalidOperationException("Cannot restore knowledge during an action.");
+            Ledger.RestoreKnowledge(exchanges);
+            FreshCharacterStarted?.Invoke();
+        }
         void Update()
         {
-            if (!Application.isFocused || Cursor.lockState != CursorLockMode.Locked) return;
+            if (Development != null || !Application.isFocused || Cursor.lockState != CursorLockMode.Locked) return;
             if (investMomentum.WasPressedThisFrame()) SetInvestments(!momentumInvestment, evasiveInvestment);
             if (investEvasion.WasPressedThisFrame()) SetInvestments(momentumInvestment, !evasiveInvestment);
             if (fresh.WasPressedThisFrame()) FreshCharacter();
@@ -66,6 +76,7 @@ namespace EvolvingRPG.Combat
         void OnEvidence(EvasionResult result) { CheckInspectorFixtures(); Ledger.Evidence(result); }
         void CheckInspectorFixtures()
         {
+            if (Development != null) return;
             if (observedMomentum == momentumInvestment && observedEvasion == evasiveInvestment) return;
             observedMomentum = momentumInvestment; observedEvasion = evasiveInvestment; investmentVersion++;
             Ledger.Invalidate("Investment fixture changed in Inspector; exchange discarded.");
@@ -75,13 +86,13 @@ namespace EvolvingRPG.Combat
             CheckInspectorFixtures();
             if (value.Kind == CombatObservationKind.Accepted)
             {
-                if (value.ActionKind == CombatActionKind.Dodge) Ledger.BeginDodge(value.ActionSequence, momentumInvestment && evasiveInvestment, investmentVersion);
-                else Ledger.BeginAttack(value.ActionSequence, value.Definition == momentum, value.Time, investmentVersion);
+                if (value.ActionKind == CombatActionKind.Dodge) Ledger.BeginDodge(value.ActionSequence, MomentumInvestment && EvasiveInvestment, InvestmentVersion);
+                else Ledger.BeginAttack(value.ActionSequence, value.Definition == momentum, value.Time, InvestmentVersion);
             }
             else if (value.Kind == CombatObservationKind.Completed)
             {
                 if (value.ActionKind == CombatActionKind.Dodge) Ledger.CompleteDodge(value.ActionSequence, value.Time);
-                else Ledger.CompleteAttack(value.ActionSequence, investmentVersion, value.Time);
+                else Ledger.CompleteAttack(value.ActionSequence, InvestmentVersion, value.Time);
             }
             else if (value.Kind == CombatObservationKind.HitResolved) Ledger.Hit(value.ActionSequence, value.Target, value.Resolution);
             else if (value.Kind == CombatObservationKind.Interrupted) Ledger.Interrupt(value.ActionSequence);

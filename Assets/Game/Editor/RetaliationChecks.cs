@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using EvolvingRPG.Combat;
+using EvolvingRPG.Progression;
 using StarterAssets;
 using UnityEditor;
 using UnityEngine;
@@ -20,6 +21,7 @@ namespace EvolvingRPG.Editor
         {
             File.WriteAllText(Report, "Unity " + Application.unityVersion + " / C3 checks; preceding live C2 chain passed\n");
             var actor = Find<CombatActions>(); var trial = actor.GetComponent<RetaliatoryMomentumTrial>(); var discovery = actor.GetComponent<ContextualDiscovery>();
+            var owner = actor.GetComponent<OwnedCharacter>();
             var evidence = actor.GetComponent<EvasionEvidence>(); var hud = Find<EnemySandboxHUD>(); var enemy = Guard();
             var native = actor.GetComponent<ThirdPersonController>(); var inputs = actor.GetComponent<StarterAssetsInputs>();
             var home = typeof(SandboxEnemy).GetField("home", Private); var oldHome = (Vector3)home.GetValue(enemy);
@@ -42,7 +44,7 @@ namespace EvolvingRPG.Editor
                     if (stage == 0)
                     {
                         if (actor.Busy || Time.time - wait < .5f) return;
-                        hud.ResetEncounter(); Require(trial.SetTrialEnabled(test != 0), "trial toggle failed after reveal");
+                        hud.ResetEncounter(); Require(owner != null ? owner.ConfigureHeavy(DevelopmentIds.Momentum, test != 0) : trial.SetTrialEnabled(test != 0), "effect configuration failed after reveal");
                         Teleport(actor.gameObject, new Vector3(0, .05f, -12), Quaternion.identity);
                         Teleport(enemy.gameObject, actor.transform.position + Vector3.forward * 1.5f, Quaternion.LookRotation(Vector3.back));
                         actor.GetComponent<CharacterController>().Move(Vector3.down); enemy.GetComponent<CharacterController>().Move(Vector3.down);
@@ -123,10 +125,12 @@ namespace EvolvingRPG.Editor
                         if (temporary != null) { UnityEngine.Object.DestroyImmediate(temporary); temporary = null; bystander = null; }
                         trial.enabled = true;
                         if (++test < 9) { stage = 0; wait = Time.time; return; }
-                        Require(discovery.FreshCharacter() && !trial.TrialEnabled && !trial.OpportunityReady
-                            && !discovery.MomentumInvestment && !discovery.EvasiveInvestment && discovery.Ledger.Knowledge == DiscoveryKnowledge.Undiscovered, "fresh character inherited trial or knowledge");
+                        if (owner != null) hud.ResetEncounter();
+                        Require((owner != null ? owner.FreshCharacter() : discovery.FreshCharacter()) && !trial.TrialEnabled && !trial.OpportunityReady
+                            && !discovery.MomentumInvestment && (owner != null || !discovery.EvasiveInvestment) && discovery.Ledger.Knowledge == DiscoveryKnowledge.Undiscovered, "fresh character inherited trial or knowledge");
                         File.AppendAllText(Report, "PASS Fresh Character clears knowledge, investments and trial activation.\n");
                         if (errors.Count > 0) throw new InvalidOperationException(string.Join("\n", errors));
+                        if (owner != null) DevelopmentChecks.Finished();
                         File.AppendAllText(Report, "PASS all C3 native checks; no runtime Console errors. Gameplay feel awaits player testing.\n");
                         Cleanup(); return;
                     }

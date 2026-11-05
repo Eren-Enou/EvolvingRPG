@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using EvolvingRPG.Combat;
+using EvolvingRPG.Progression;
 using StarterAssets;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -19,13 +20,14 @@ namespace EvolvingRPG.Editor
         static DiscoveryChecks() => EditorApplication.playModeStateChanged += Changed;
         [MenuItem("Tools/EvolvingRPG/Run Discovery Checks")]
         public static void Run() => RunScene(false);
+        public static void RunDevelopment() => RunScene(false, true);
         public static void RunTrial() => RunScene(true);
-        static void RunScene(bool trial)
+        static void RunScene(bool trial, bool development = false)
         {
             if (EditorApplication.isPlayingOrWillChangePlaymode) throw new InvalidOperationException("Exit Play mode first.");
             for (int i = 0; i < SceneManager.sceneCount; i++) if (SceneManager.GetSceneAt(i).isDirty) throw new InvalidOperationException("Save edits first.");
-            if (trial) RetaliationSandboxBuilder.Create(); else DiscoverySandboxBuilder.Create();
-            EditorSceneManager.OpenScene(trial ? RetaliationSandboxBuilder.ScenePath : DiscoverySandboxBuilder.ScenePath);
+            if (development) DevelopmentSandboxBuilder.Create(); else if (trial) RetaliationSandboxBuilder.Create(); else DiscoverySandboxBuilder.Create();
+            EditorSceneManager.OpenScene(development ? DevelopmentSandboxBuilder.ScenePath : trial ? RetaliationSandboxBuilder.ScenePath : DiscoverySandboxBuilder.ScenePath);
             SessionState.SetBool(Requested, true); EditorApplication.EnterPlaymode();
         }
         static void Changed(PlayModeStateChange state)
@@ -98,7 +100,7 @@ namespace EvolvingRPG.Editor
             var actor = Find<CombatActions>(); var discovery = actor.GetComponent<ContextualDiscovery>();
             var evidence = actor.GetComponent<EvasionEvidence>(); var enemy = Guard(); var hud = Find<EnemySandboxHUD>();
             var native = actor.GetComponent<ThirdPersonController>(); var inputs = actor.GetComponent<StarterAssetsInputs>();
-            var selector = actor.GetComponent<HeavyTechniqueSelector>();
+            var selector = actor.GetComponent<HeavyTechniqueSelector>(); var owner = actor.GetComponent<OwnedCharacter>();
             var home = typeof(SandboxEnemy).GetField("home", Private); Vector3 oldHome = (Vector3)home.GetValue(enemy);
             float oldStep = Time.captureDeltaTime; bool oldBackground = Application.runInBackground;
             Time.captureDeltaTime = 1f / 60; Application.runInBackground = true;
@@ -119,8 +121,12 @@ namespace EvolvingRPG.Editor
                     {
                         if (actor.Busy || Time.time - wait < .5f) return;
                         hud.ResetEncounter();
-                        if (count == 0) { Require(discovery.FreshCharacter(), "fresh rejected"); Require(discovery.SetInvestments(true, true), "fixture rejected"); }
-                        Require(selector.TrySelect(2), "Momentum selection failed");
+                        if (count == 0)
+                        {
+                            if (owner != null) { Require(owner.FreshCharacter(), "owned fresh rejected"); Require(owner.Purchase(DevelopmentIds.Momentum, owner.State.Revision), "owned Momentum purchase rejected"); }
+                            else { Require(discovery.FreshCharacter(), "fresh rejected"); Require(discovery.SetInvestments(true, true), "fixture rejected"); }
+                        }
+                        if (owner == null) Require(selector.TrySelect(2), "Momentum selection failed");
                         Teleport(actor.gameObject, new Vector3(0, .05f, -12), Quaternion.identity);
                         Teleport(enemy.gameObject, actor.transform.position + Vector3.forward * 1.5f, Quaternion.LookRotation(Vector3.back));
                         actor.GetComponent<CharacterController>().Move(Vector3.down); enemy.GetComponent<CharacterController>().Move(Vector3.down);
@@ -149,7 +155,8 @@ namespace EvolvingRPG.Editor
                         Require(discovery.Ledger.Knowledge == DiscoveryKnowledge.Revealed && actor.GetComponent<HeavyPractice>() == null, "reveal/effect separation failed");
                         if (errors.Count > 0) throw new InvalidOperationException(string.Join("\n", errors));
                         Pass("All C2 checks; no runtime Console errors; reveal grants no attack modifier or ownership.");
-                        if (actor.GetComponent<RetaliatoryMomentumTrial>() != null) { Cleanup(false); RetaliationChecks.Begin(); }
+                        if (owner != null) { Cleanup(false); DevelopmentChecks.AfterDiscovery(); }
+                        else if (actor.GetComponent<RetaliatoryMomentumTrial>() != null) { Cleanup(false); RetaliationChecks.Begin(); }
                         else Cleanup();
                         return;
                     }

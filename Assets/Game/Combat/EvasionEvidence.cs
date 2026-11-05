@@ -63,7 +63,8 @@ namespace EvolvingRPG.Combat
             if (observation.Kind == CombatObservationKind.Accepted)
             {
                 if (observation.ActionKind == CombatActionKind.Dodge && observation.ActionSequence <= lastDodgeSequence) return;
-                if (pending != null) { pending.Mark(EvasionReason.AdditionalAction); Publish(); }
+                if (pending != null && (observation.ActionKind == CombatActionKind.Dodge || !pending.DodgeCompleted))
+                { pending.Mark(EvasionReason.AdditionalAction); Publish(); }
                 if (observation.ActionKind != CombatActionKind.Dodge || observation.ActionSequence <= lastDodgeSequence) return;
                 lastDodgeSequence = observation.ActionSequence;
                 EnemyThreat? selected = null; int count = 0; bool untracked = false;

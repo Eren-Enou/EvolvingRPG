@@ -12,7 +12,7 @@ namespace EvolvingRPG.Combat
         {
             public int Dodge, Attack = -1, Version;
             public bool Eligible, DodgeComplete, AttackComplete;
-            public float DodgeEnded;
+            public float DodgeEnded, CompletedAt;
             public EvasionResult? Evidence;
             public readonly List<(SandboxEnemy source, int revision)> Hits = new List<(SandboxEnemy, int)>();
         }
@@ -64,11 +64,11 @@ namespace EvolvingRPG.Combat
             if (source != null && context.EngagedWithSource && pending.Hits.Count < 16)
                 pending.Hits.Add((source, context.EncounterRevision));
         }
-        public void CompleteAttack(int sequence, int version)
+        public void CompleteAttack(int sequence, int version, float completedAt = 0)
         {
             if (pending == null || pending.Attack != sequence) return;
             if (pending.Version != version) { Reject("Investment fixture changed before recovery completed."); return; }
-            pending.AttackComplete = true; Evaluate();
+            pending.AttackComplete = true; pending.CompletedAt = completedAt; Evaluate();
         }
         public void Interrupt(int sequence)
         { if (pending != null && (pending.Dodge == sequence || pending.Attack == sequence)) Reject("Linked action interrupted."); }
@@ -97,7 +97,7 @@ namespace EvolvingRPG.Combat
                 ? "Retaliatory Momentum revealed: invested advancing strikes repeatedly followed verified evasions. Known only; not learned or equipped."
                 : "Your evasive movement is beginning to shape your advancing strikes.";
             if (journal.Count == 8) journal.Dequeue();
-            journal.Enqueue(message + " Evidence: " + key.Label + ", dodge #" + pending.Dodge + ", Heavy #" + pending.Attack + ".");
+            journal.Enqueue("At " + pending.CompletedAt.ToString("0.00") + "s: " + message + " Evidence: " + key.Label + ", dodge #" + pending.Dodge + ", Heavy #" + pending.Attack + ".");
             Diagnostic = "Qualified exchange " + Exchanges + ": same opponent, on-time acceptance, applied impact and completed recovery.";
             pending = null;
         }

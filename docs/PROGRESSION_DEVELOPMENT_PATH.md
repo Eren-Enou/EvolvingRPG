@@ -1,6 +1,6 @@
 # Development path toward evolving character progression
 
-Status: specification-aligned architecture audit and experiment sequence. Current assignment, 2026-11-04: **P1 / V0.4 C1 meaningful evasion evidence only**. [EVASION_EVIDENCE_EXPERIMENT.md](EVASION_EVIDENCE_EXPERIMENT.md) records implementation, offline source compilation and pending user-run Editor checks. V0.4 B is preserved; C2/C3 and the full progression system are deferred.
+Status, 2026-11-05: C1/C2/C3 are implemented with supported native Unity checks passing. See [the overnight report](OVERNIGHT_PROGRESS_REPORT.md) and [playable discovery/trial instructions](DISCOVERY_PLAYGROUND.md). Focused input regressions and player review remain; actual purchases/persistence are deferred. Historical design restrictions below do not override the overnight assignment.
 
 ## Source alignment
 
@@ -48,7 +48,7 @@ Exact formulas, thresholds, tree shapes, specialization restrictions, mastery re
 | `EnemyImpactContext` / enemy vitality | Frozen pre-hit phase, source engagement, threat sequence and encounter revision | Offensive impact context does not prove that an incoming strike was evaded. |
 | `IAttackResolver` | One optional actor-owned snapshot preview boundary | Keep preview side-effect-free; extend narrowly when real ownership or temporary effect commitment is assigned. |
 
-There is currently no durable character progression state, production mastery ledger, talent graph, discovery evaluator, or progression persistence. HeavyPractice is a transient experimental ledger, not a substitute for those systems. Do not add placeholder implementations for all of them now.
+There is now one session-only discovery evaluator and an optional retaliation trial. Durable character progression, a production mastery ledger, talent graph and progression persistence are still absent. HeavyPractice is a transient experimental ledger, not a substitute for those systems. Do not add placeholder implementations for all of them now.
 
 V0.3 introduces incoming telegraphed enemy strikes and player vitality. Dodge completion still does not establish successful evasion: the sandbox does not yet attribute an enemy miss to a particular defensive action. Meaningful evasive evidence still needs an explicit outcome definition during enemy/progression experiments; elapsed time between dodge and attack is insufficient by itself.
 

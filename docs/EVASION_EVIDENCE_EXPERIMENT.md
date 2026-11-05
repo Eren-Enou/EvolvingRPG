@@ -1,6 +1,6 @@
 # V0.4 C1 — meaningful evasion evidence
 
-Implemented for Editor validation, 2026-11-04. This slice collects diagnostic evidence only. It grants no mastery, XP, knowledge reveals, talents, purchases or combat benefits. Existing PracticeTest remains the separate earlier practice experiment; C1 copies EnemyTest so its own scene has no HeavyPractice component.
+Implemented 2026-11-04; native Editor checks passed in the overnight follow-up on 2026-11-05. This slice collects diagnostic evidence only. It grants no mastery, XP, knowledge reveals, talents, purchases or combat benefits. Existing PracticeTest remains the separate earlier practice experiment; C1 copies EnemyTest so its own scene has no HeavyPractice component.
 
 ## Create and launch the sandbox
 
@@ -35,7 +35,7 @@ The fast opponent starts inactive to keep the first case inspectable. **F3** tog
 | Two committed threats against the actor | Unverified overlap |
 | Low frame rate or missing samples | Unverified, not assumed success |
 
-Starting a second action before the evidence finishes is unverified. Declining to counterattack is fine; C1 requires no Heavy after dodge. Wait for a fresh enemy commitment after toggling an opponent that was mid-attack, since its resumed old phase has no valid live evidence lifecycle.
+Starting another dodge, or an action before full dodge recovery completes, invalidates the pending evidence. An attack accepted after full dodge recovery may precede the final threat receipt: bounded trajectory sampling continues, and incoming contact or source interruption still prevents verification. Declining to counterattack is fine; C1 requires no Heavy after dodge. Wait for a fresh enemy commitment after toggling an opponent that was mid-attack, since its resumed old phase has no valid live evidence lifecycle.
 
 ## Implementation boundary
 
@@ -59,7 +59,7 @@ The captured geometry is used for the live strike query. Inspector edits to its 
 
 Only the player in the new scene receives `EvasionEvidence`. It subscribes to accepted/completed/interrupted action observations and vitality/reset receipts. Accepted direction, capsule, timing and action sequence are captured before travel. LateUpdate samples the actual post-motor capsule and `CollisionFlags.Sides`; the Starter Assets motor remains the only runtime movement integrator.
 
-The result retains the dodge's actual end capsule, completion/interruption, displacement and traveled path, separately from the continuing evidence interval. The interval may outlast dodge recovery until the enemy finishes. Another accepted action invalidates attribution. Any incoming contact before finalization rejects, including a different attacker's contact.
+The result retains the dodge's actual end capsule, completion/interruption, displacement and traveled path, separately from the continuing evidence interval. The interval may outlast dodge recovery until the enemy finishes. A new dodge or an action before full dodge recovery invalidates attribution. A post-recovery attack may proceed while remaining threat evidence finalizes; the same trajectory and lifecycle checks continue. Any incoming contact before finalization rejects, including a different attacker's contact.
 
 ### Conservative trajectory proof
 

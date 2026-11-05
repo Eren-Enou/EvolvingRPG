@@ -18,11 +18,14 @@ namespace EvolvingRPG.Editor
         const BindingFlags Private = BindingFlags.Instance | BindingFlags.NonPublic;
         static DiscoveryChecks() => EditorApplication.playModeStateChanged += Changed;
         [MenuItem("Tools/EvolvingRPG/Run Discovery Checks")]
-        public static void Run()
+        public static void Run() => RunScene(false);
+        public static void RunTrial() => RunScene(true);
+        static void RunScene(bool trial)
         {
             if (EditorApplication.isPlayingOrWillChangePlaymode) throw new InvalidOperationException("Exit Play mode first.");
             for (int i = 0; i < SceneManager.sceneCount; i++) if (SceneManager.GetSceneAt(i).isDirty) throw new InvalidOperationException("Save edits first.");
-            DiscoverySandboxBuilder.Create(); EditorSceneManager.OpenScene(DiscoverySandboxBuilder.ScenePath);
+            if (trial) RetaliationSandboxBuilder.Create(); else DiscoverySandboxBuilder.Create();
+            EditorSceneManager.OpenScene(trial ? RetaliationSandboxBuilder.ScenePath : DiscoverySandboxBuilder.ScenePath);
             SessionState.SetBool(Requested, true); EditorApplication.EnterPlaymode();
         }
         static void Changed(PlayModeStateChange state)
@@ -130,34 +133,38 @@ namespace EvolvingRPG.Editor
                     }
                     else if (stage == 1)
                     {
-                        if (actor.Busy || !evidence.Latest.HasValue || evidence.Latest.Value.DodgeSequence != dodge) return;
-                        Require(evidence.Latest.Value.Classification == EvasionClassification.Verified, "real evasion did not verify: " + evidence.Latest.Value.Explanation);
+                        if (actor.Busy) return;
+                        if (count != 1 && (!evidence.Latest.HasValue || evidence.Latest.Value.DodgeSequence != dodge)) return;
+                        if (count != 1) Require(evidence.Latest.Value.Classification == EvasionClassification.Verified, "real evasion did not verify: " + evidence.Latest.Value.Explanation);
                         actor.transform.rotation = Quaternion.LookRotation(Vector3.ProjectOnPlane(enemy.transform.position - actor.transform.position, Vector3.up));
                         native.Grounded = true; Require(actor.TryAttack(discovery.Momentum), "live Momentum rejected"); stage = 2;
                     }
                     else
                     {
                         if (actor.Busy) return;
+                        Require(evidence.Latest.HasValue && evidence.Latest.Value.DodgeSequence == dodge && evidence.Latest.Value.Classification == EvasionClassification.Verified, "delayed real evasion did not verify");
                         Require(discovery.Ledger.Exchanges == count + 1, "real same-opponent Momentum did not qualify: " + discovery.Ledger.Diagnostic);
                         count++; Pass("Native exchange " + count + ": real C1 evasion -> accepted Momentum -> applied same-generation hit -> full recovery -> " + discovery.Ledger.Knowledge);
                         if (count < 3) { stage = 0; wait = Time.time; return; }
                         Require(discovery.Ledger.Knowledge == DiscoveryKnowledge.Revealed && actor.GetComponent<HeavyPractice>() == null, "reveal/effect separation failed");
                         if (errors.Count > 0) throw new InvalidOperationException(string.Join("\n", errors));
                         Pass("All C2 checks; no runtime Console errors; reveal grants no attack modifier or ownership.");
-                        Cleanup(); return;
+                        if (actor.GetComponent<RetaliatoryMomentumTrial>() != null) { Cleanup(false); RetaliationChecks.Begin(); }
+                        else Cleanup();
+                        return;
                     }
                     return;
                 }
                 catch (Exception e) { File.AppendAllText(Report, "FAIL " + e + "\n"); Cleanup(); }
             };
-            void Cleanup()
+            void Cleanup(bool exit = true)
             {
                 home.SetValue(enemy, oldHome);
                 try { hud.ResetEncounter(); }
                 finally
                 {
                 Time.captureDeltaTime = oldStep; Application.runInBackground = oldBackground;
-                Application.logMessageReceived -= capture; EditorApplication.update -= tick; EditorApplication.ExitPlaymode();
+                Application.logMessageReceived -= capture; EditorApplication.update -= tick; if (exit) EditorApplication.ExitPlaymode();
                 }
             }
             EditorApplication.update += tick;

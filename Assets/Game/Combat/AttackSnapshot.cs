@@ -13,13 +13,14 @@ namespace EvolvingRPG.Combat
         public readonly Color Color;
         public float Duration => Windup + ActiveTime + Recovery;
         public AttackSnapshot WithRecovery(float recovery) => new AttackSnapshot(this, recovery);
+        public AttackSnapshot WithAdvance(float distance, string name) => new AttackSnapshot(this, Recovery, distance, name);
 
-        private AttackSnapshot(AttackSnapshot source, float recovery)
+        private AttackSnapshot(AttackSnapshot source, float recovery, float? advance = null, string name = null)
         {
-            DisplayName = source.DisplayName; Windup = source.Windup; ActiveTime = source.ActiveTime;
+            DisplayName = name ?? source.DisplayName; Windup = source.Windup; ActiveTime = source.ActiveTime;
             Recovery = Mathf.Max(0.01f, recovery); Damage = source.Damage; PoiseDamage = source.PoiseDamage;
             StaminaCost = source.StaminaCost; Range = source.Range; Arc = source.Arc;
-            MovementMultiplier = source.MovementMultiplier; AdvanceDistance = source.AdvanceDistance;
+            MovementMultiplier = source.MovementMultiplier; AdvanceDistance = Mathf.Max(0, advance ?? source.AdvanceDistance);
             MissRecovery = source.MissRecovery; Color = source.Color;
         }
 

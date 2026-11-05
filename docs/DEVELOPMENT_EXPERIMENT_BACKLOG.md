@@ -1,5 +1,7 @@
 # Development experiment backlog
 
+Current implementation update, 2026-11-05: P1/P2/P3 now have playable C1/C2/C3 implementations and native checks; see [OVERNIGHT_PROGRESS_REPORT.md](OVERNIGHT_PROGRESS_REPORT.md). P4/P5 remain deferred. Historical documentation-only restrictions below describe the earlier design pass, not the authorized overnight work.
+
 Proposed sequence, not a release schedule or a standing instruction to implement everything. All work in this design expansion is documentation only. The user's **do not run Unity** restriction remains in force for this assignment; test procedures below are future work, not executed checks.
 
 [MILESTONES](MILESTONES.md) controls actual assignments. [The atlas](GROWTH_DESIGN_ATLAS.md) explains how these experiments connect. No new runtime code is required merely to maintain this backlog.

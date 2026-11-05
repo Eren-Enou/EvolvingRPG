@@ -1,6 +1,6 @@
 # Proposed V0.4 C — Evasion to discovery
 
-Status: **C1 implementation prepared, actual Editor validation pending**; see [EVASION_EVIDENCE_EXPERIMENT.md](EVASION_EVIDENCE_EXPERIMENT.md) for the implemented supported envelope and commands. C2 knowledge/discovery and C3 Retaliatory Momentum remain future proposals, not implemented or validated. The existing PracticeTest experiment is unchanged. See [the combat evolution lab](COMBAT_EVOLUTION_LAB.md) for alternatives and [the talent charter](EVOLVING_TALENT_SYSTEM.md) for established requirements.
+Status, 2026-11-05: C1/C2/C3 have playable implementations and supported native Unity checks. [DISCOVERY_PLAYGROUND.md](DISCOVERY_PLAYGROUND.md) records actual controls/behavior; [OVERNIGHT_PROGRESS_REPORT.md](OVERNIGHT_PROGRESS_REPORT.md) records validation and remaining focused input/player checks. This document retains the design rationale and proposals; values are not finalized. PracticeTest remains independent.
 
 ## Hypothesis and smallest deliverable
 

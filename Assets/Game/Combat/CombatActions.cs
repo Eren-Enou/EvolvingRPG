@@ -28,6 +28,8 @@ namespace EvolvingRPG.Combat
         public AttackDefinition CurrentAttack { get; private set; }
         public AttackSnapshot CommittedAttack { get; private set; }
         public bool HasCommittedAttack { get; private set; }
+        public AttackCommitment? CommittedContext { get; private set; }
+        private bool contextTargetHit;
         public CombatPhase Phase { get; private set; }
         public bool Busy => Phase != CombatPhase.Ready;
         public bool MovementBlocked => vitality != null && (vitality.Defeated || vitality.Staggered);
@@ -78,6 +80,7 @@ namespace EvolvingRPG.Combat
             CurrentAttack = null;
             HasCommittedAttack = false;
             CommittedAttack = default;
+            CommittedContext = null; contextTargetHit = false;
             AttackAdvanceSpeedThisFrame = 0;
             pointerWasLocked = false;
         }
@@ -134,6 +137,7 @@ namespace EvolvingRPG.Combat
         {
             if (Busy) Observe(CombatObservationKind.Interrupted);
             Phase = CombatPhase.Ready; CurrentAttack = null; CommittedAttack = default;
+            CommittedContext = null; contextTargetHit = false;
             HasCommittedAttack = false; dodging = false; DodgeSpeedThisFrame = 0; PhaseProgress = 0;
             AttackAdvanceSpeedThisFrame = 0;
             Facing = transform.rotation; Message = message;
@@ -148,6 +152,9 @@ namespace EvolvingRPG.Combat
             if (!CanStart(snapshot.StaminaCost)) return false;
             CurrentAttack = attack;
             CommittedAttack = snapshot;
+            CommittedContext = attackResolver != null && attackResolver.isActiveAndEnabled && attackResolver is IAttackAcceptanceResolver acceptance
+                ? acceptance.Accepted(attack, snapshot) : (AttackCommitment?)null;
+            contextTargetHit = false;
             HasCommittedAttack = true;
             dodging = false;
             hitTargets.Clear();
@@ -168,6 +175,7 @@ namespace EvolvingRPG.Combat
             CurrentAttack = null;
             HasCommittedAttack = false;
             CommittedAttack = default;
+            CommittedContext = null; contextTargetHit = false;
             dodging = true;
             Phase = CombatPhase.Dodge;
             Message = "Dodge (no invulnerability)";
@@ -203,7 +211,8 @@ namespace EvolvingRPG.Combat
                 if (hits > 0) Message = $"{attack.DisplayName} HIT | {attack.Damage:0} damage / {attack.PoiseDamage:0} poise";
             }
             Phase = elapsed < attack.Windup ? CombatPhase.Windup : elapsed < activeEnd ? CombatPhase.Active : CombatPhase.Recovery;
-            float recoveryTime = attack.Recovery + (hitTargets.Count == 0 ? attack.MissRecovery : 0);
+            float recoveryTime = attack.Recovery + (hitTargets.Count == 0 ? attack.MissRecovery : 0)
+                + (CommittedContext.HasValue && (!contextTargetHit || !CommittedContext.Value.SameGeneration) ? CommittedContext.Value.TargetMissRecovery : 0);
             PhaseProgress = Phase == CombatPhase.Windup ? elapsed / attack.Windup : Phase == CombatPhase.Active
                 ? (elapsed - attack.Windup) / attack.ActiveTime : Mathf.Clamp01((elapsed - activeEnd) / recoveryTime);
             if (elapsed >= activeEnd + recoveryTime) EndAction();
@@ -218,12 +227,14 @@ namespace EvolvingRPG.Combat
             CurrentAttack = null;
             HasCommittedAttack = false;
             CommittedAttack = default;
+            CommittedContext = null; contextTargetHit = false;
             dodging = false;
             PhaseProgress = 0f;
         }
 
         private void ReportResolvedHit(HitReceiver target, HitResolution resolution)
         {
+            if (CommittedContext.HasValue && CommittedContext.Value.Matches(target, resolution)) contextTargetHit = true;
             Observe(CombatObservationKind.HitResolved, target, resolution);
         }
 

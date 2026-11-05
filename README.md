@@ -14,12 +14,14 @@ This checkout is an existing Unity project. Use the engine version recorded in [
 | CombatTest | Light/Heavy, directional dodge and stationary training target |
 | EnemyTest | Guarded/fast opponents, health, poise and encounter reactions |
 | TechniqueTest | Baseline, Breaker and Momentum Heavy debug comparisons |
-| PracticeTest | Latest playable slice: meaningful Heavy practice and optional recovery trial |
-| EvasionEvidenceTest (manual builder) | C1 diagnostic-only evasion evidence; Editor validation pending |
+| PracticeTest | Preserved Heavy practice and optional recovery trial |
+| EvasionEvidenceTest | C1 diagnostic-only evasion evidence |
+| DiscoveryTest | C2 session investments, contextual hint/reveal and journal; no effects |
+| RetaliationTest | C3 discovery plus optional extended-return A/B trial |
 
-For future playtesting, open the desired scene in the existing Editor, enter Play mode and focus the Game view. See [Heavy practice instructions](docs/HEAVY_PRACTICE_EXPERIMENT.md) for the latest slice's controls, tuning, limitations and previously recorded functional results. The technique/practice formulas remain proposals; player testing establishes feel.
+Newest playable slice: open **Assets/Game/Scenes/RetaliationTest.unity**, press Play and click Game view. See [discovery/trial controls](docs/DISCOVERY_PLAYGROUND.md) and the [overnight report](docs/OVERNIGHT_PROGRESS_REPORT.md). Start with 3 for Momentum and F4/F5 for the two explicit investment fixtures. Verified evasion plus a completed same-opponent Momentum exchange supplies a clue; three distinct strikes reveal the option. F2 enables a trial after reveal; a subsequent verified evasion plus forward intent + RMB requests the extended return. Discovery never automatically grants ownership.
 
-The current assignment is **P1 / V0.4 C1 meaningful evasion evidence only**. See [the experiment guide](docs/EVASION_EVIDENCE_EXPERIMENT.md) for the manual scene-builder and check menus. Runtime and Editor sources pass offline C# compilation; the user must run Editor import/Play-mode/physics checks and interactive validation. Unity was not launched or controlled for this implementation. Stamina remains intentionally permissive and unchanged.
+C1/C2/C3 Unity compilation and supported native checks passed. The focused keyboard/mouse combat suite remains for interactive Editor testing; gameplay feel is not validated by these checks. Real talent purchases and saves are deferred. Stamina remains deliberately permissive and unchanged.
 
 ## Design and development
 
@@ -37,6 +39,6 @@ Start at the [Growth Design Atlas](docs/GROWTH_DESIGN_ATLAS.md) for the game's p
 
 ## Working safely in the project
 
-Keep custom code under Assets/Game. Preserve third-party assets, Unity .meta files, Packages and ProjectSettings. The user's Editor may remain open; do not launch a second Editor against the same project. Notify the user before changing scenes/prefabs they may be editing. The current documentation assignment does not require Editor configuration.
+Keep custom code under Assets/Game. Preserve third-party assets, Unity .meta files, Packages and ProjectSettings. The user's Editor may remain open; do not launch a second Editor against the same project. Notify the user before changing scenes/prefabs they may be editing. New test scenes are generated with explicit Unity builder menus; importing scripts does not create them. The included scenes need no manual component wiring.
 
 Keep generated Library, Temp, build output and local reports outside version control as configured by the project. Broader talent generation, equipment economy, account services and multiplayer are future ambitions, not implemented features.

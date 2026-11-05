@@ -19,6 +19,9 @@ namespace EvolvingRPG.Combat
         private Vector3 spawn;
         private Quaternion facing;
         private GUIStyle text;
+        [SerializeField] private bool showInterface = true;
+        public bool InterfaceVisible => showInterface;
+        public void SetInterfaceVisible(bool visible) => showInterface = visible;
         public void Configure(CombatActions actor, SandboxEnemy[] opponents) { player = actor; enemies = opponents; }
         public void SetOpponentDetails(bool visible) => showOpponentDetails = visible;
         private void OnEnable() { reset.Enable(); clear.Enable(); details.Enable(); }
@@ -48,7 +51,7 @@ namespace EvolvingRPG.Combat
         }
         private void OnGUI()
         {
-            if (player == null || vitality == null || enemies == null) return;
+            if (!showInterface || player == null || vitality == null || enemies == null) return;
             if (text == null) { text = new GUIStyle(GUI.skin.label) { fontSize = 13, wordWrap = true }; text.normal.textColor = Color.white; }
             float width = Mathf.Min(760, Screen.width - 24);
             float panelHeight = showOpponentDetails ? (techniques != null ? 325 : 265) : (techniques != null ? 180 : 125);

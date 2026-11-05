@@ -1,6 +1,6 @@
 # Development path toward evolving character progression
 
-Status: specification-aligned architecture audit and proposed experiment sequence, reviewed 2026-11-03. Following the user's instruction to continue developing with judgment, the current slice is **V0.4 B: Heavy practice trial**. This does not settle the earlier technique proposals or authorize the full progression system.
+Status: specification-aligned architecture audit and experiment sequence. Current assignment, 2026-11-04: **P1 / V0.4 C1 meaningful evasion evidence only**. [EVASION_EVIDENCE_EXPERIMENT.md](EVASION_EVIDENCE_EXPERIMENT.md) records implementation, offline source compilation and pending user-run Editor checks. V0.4 B is preserved; C2/C3 and the full progression system are deferred.
 
 ## Source alignment
 

@@ -2,7 +2,7 @@
 
 **Approach:** Validate one mechanic at a time. Each milestone should produce something playable. The vision document is the long-term compass, not the first milestone's scope.
 
-**Long-term progression requirements:** `EVOLVING_TALENT_SYSTEM.md` defines the established talent-system direction and labels mechanics that remain proposals. `PROGRESSION_DEVELOPMENT_PATH.md` maps that charter to small validation experiments. Following the user's instruction to continue developing with judgment, the current slice is V0.4 B: Heavy practice trial. The full progression system remains deferred, and earlier experiments are not assumed fully validated. Preserve the engine version declared by `ProjectSettings/ProjectVersion.txt` rather than changing it to match the historical V0.1 version target.
+**Long-term progression requirements:** `EVOLVING_TALENT_SYSTEM.md` defines the established talent-system direction and labels mechanics that remain proposals. `PROGRESSION_DEVELOPMENT_PATH.md` maps that charter to small validation experiments. The current assigned slice is **P1 / V0.4 C1: meaningful evasion evidence**, with implementation and prepared checks awaiting user-run Editor validation. V0.4 B remains preserved. The full progression system remains deferred, and earlier experiments are not assumed fully validated. Preserve the engine version declared by `ProjectSettings/ProjectVersion.txt` rather than changing it to match the historical V0.1 version target.
 
 ## V0.1 — Camera + movement (first task)
 
@@ -55,6 +55,8 @@ The user describes this as an interesting playstyle foundation and a good start,
 - Enemies react to repeated attacks and positional patterns within an encounter.
 
 ## V0.4 — Initial character evolution
+
+**Current assignment: V0.4 C1, evidence only.** [EVASION_EVIDENCE_EXPERIMENT.md](EVASION_EVIDENCE_EXPERIMENT.md) documents committed threat identity, shared contact rules, post-motor dodge sampling, conservative diagnostic receipts, a manual EvasionEvidenceTest builder and targeted checks. Offline runtime/Editor source compilation passed; Unity import, Play mode, physics checks and player testing have not been run for this change. No XP/mastery, discovery, evolution effect, purchase or save is added. The user invokes the builder/check menus in their existing Editor. C2/C3 remain deferred.
 
 **Depth-first design refinement:** The user's latest steering prioritizes deeper applications of familiar actions over additional branches. [DEPTH_FIRST_DESIGN.md](DEPTH_FIRST_DESIGN.md) and [HEAVY_DISCIPLINE_DEPTH_STUDY.md](HEAVY_DISCIPLINE_DEPTH_STUDY.md) narrow the proposed research toward one Heavy lineage, contextual decisions, retained liabilities and readable control. New families/features remain dormant unless a demonstrated missing decision justifies them. This changes design priority only: V0.4 B is still the playable implementation, and no Unity or runtime work is authorized for this documentation assignment.
 

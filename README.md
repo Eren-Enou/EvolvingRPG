@@ -15,10 +15,11 @@ This checkout is an existing Unity project. Use the engine version recorded in [
 | EnemyTest | Guarded/fast opponents, health, poise and encounter reactions |
 | TechniqueTest | Baseline, Breaker and Momentum Heavy debug comparisons |
 | PracticeTest | Latest playable slice: meaningful Heavy practice and optional recovery trial |
+| EvasionEvidenceTest (manual builder) | C1 diagnostic-only evasion evidence; Editor validation pending |
 
 For future playtesting, open the desired scene in the existing Editor, enter Play mode and focus the Game view. See [Heavy practice instructions](docs/HEAVY_PRACTICE_EXPERIMENT.md) for the latest slice's controls, tuning, limitations and previously recorded functional results. The technique/practice formulas remain proposals; player testing establishes feel.
 
-The current assignment is **design/documentation only, without running Unity**. No new tests or gameplay validation were performed for the design expansion. Stamina is intentionally permissive for interruption investigation and remains unchanged.
+The current assignment is **P1 / V0.4 C1 meaningful evasion evidence only**. See [the experiment guide](docs/EVASION_EVIDENCE_EXPERIMENT.md) for the manual scene-builder and check menus. Runtime and Editor sources pass offline C# compilation; the user must run Editor import/Play-mode/physics checks and interactive validation. Unity was not launched or controlled for this implementation. Stamina remains intentionally permissive and unchanged.
 
 ## Design and development
 

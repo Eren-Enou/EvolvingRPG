@@ -33,6 +33,8 @@ namespace EvolvingRPG.Combat
         public bool MovementBlocked => vitality != null && (vitality.Defeated || vitality.Staggered);
         public Quaternion Facing { get; private set; }
         public Vector3 DodgeDirection { get; private set; }
+        public float DodgeTravelDistance => dodgeDistance;
+        public float DodgeTravelDuration => dodgeDuration;
         public float DodgeSpeedThisFrame { get; private set; }
         public float AttackAdvanceSpeedThisFrame { get; private set; }
         public float PhaseProgress { get; private set; }

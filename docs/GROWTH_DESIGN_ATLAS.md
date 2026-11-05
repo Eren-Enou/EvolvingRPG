@@ -2,6 +2,8 @@
 
 Design expansion, 2026-11-03. These documents describe future experiments and a possible game shape. They are not implemented features, production estimates, final balance, or permission to replace the current combat foundation. Unity was not run for this work.
 
+**Current narrow implementation:** [V0.4 C1 evasion evidence](EVASION_EVIDENCE_EXPERIMENT.md) now has source implementation, manual scene builder and prepared Editor checks. Offline source compilation passes; actual Editor/physics/player validation is pending. No discovery, investment or evolution from this design inventory is implemented by C1.
+
 **Latest refinement: depth first.** [DEPTH_FIRST_DESIGN.md](DEPTH_FIRST_DESIGN.md) narrows the option inventory into a focused development policy. [HEAVY_DISCIPLINE_DEPTH_STUDY.md](HEAVY_DISCIPLINE_DEPTH_STUDY.md) studies one advancing-Heavy lineage through existing contexts, retaining planted disruption as a separate reference. Read these before selecting additional branches, gear, abilities or enemy families. The documents below remain an inventory of possibilities, not a cumulative feature commitment.
 
 ## The playable promise

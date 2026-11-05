@@ -4,7 +4,7 @@ Read `docs/VISION.md` and `docs/MILESTONES.md` before making changes.
 
 ## Product goals
 
-- Unity 6.3 LTS, C#, Universal Render Pipeline (URP), PC/keyboard-and-mouse first.
+- Use the Unity version declared by ProjectSettings/ProjectVersion.txt (currently 6000.6.7f1), C#, URP, PC/keyboard-and-mouse first.
 - Prioritize satisfying movement, thoughtful combat, and systemic extensibility over graphics.
 - Maintain the core character-identity principle in `docs/VISION.md`.
 
@@ -23,10 +23,6 @@ Read `docs/VISION.md` and `docs/MILESTONES.md` before making changes.
 
 ## Current assignment
 
-Latest follow-up: the user requested an extremely basic test of the new ideas. A standalone design-model smoke script at `tools/DesignChecks/DepthIdeaSmokeChecks.ps1` is authorized and has run; results and limits are in `docs/DEPTH_IDEA_SMOKE_RESULTS.md`. This does not authorize launching Unity or changing runtime systems. Keep actual gameplay validation distinct from these small model checks.
+The user's overnight assignment authorizes V0.4 C1 -> C2 -> C3, with D as a gated stretch. Validate each stage before proceeding. Safe automated Unity testing is authorized; never launch another Editor against an open project or interrupt unsaved user edits. Inspect running processes before exclusive batch tests.
 
-Latest steering: **prioritize depth over breadth in the proposed paths**. Read `docs/DEPTH_FIRST_DESIGN.md` and `docs/HEAVY_DISCIPLINE_DEPTH_STUDY.md`. Prefer one Heavy lineage developed through familiar contexts, with the other existing technique as an independent comparison. Keep new Light branches, abilities, gear effects, weapon families and enemy roles dormant until a specific missing decision justifies them. This remains documentation-only work; do not run Unity, add runtime systems or tune stamina.
-
-The latest user request authorizes a **broad documentation-only design expansion without running Unity**: develop the game's beginning, combat evolution, missions, specialization, equipment, world growth and independently testable paths. Start at `docs/GROWTH_DESIGN_ATLAS.md`; consult `docs/DEVELOPMENT_EXPERIMENT_BACKLOG.md` before selecting future implementation and `docs/DESIGN_REVIEW_REGISTER.md` for open decisions. These are proposals, not implemented features or permission to run Unity/tests in this pass. Do not add runtime code or alter scenes for this documentation assignment. Preserve the user's talent charter and VISION. V0.4 B remains the current playable implementation, and stamina tuning remains deferred.
-
-Current playable baseline: **V0.4 B — Heavy practice trial** uses completed Heavy actions in meaningful opponent exchanges, explicit credit/rejection diagnostics, duplicate/reset protection, and one optional bounded recovery trial in a separate `PracticeTest` scene. Preserve earlier scenes, authored technique assets, existing controls, player/enemy balance, stamina costs, and regeneration. Technique usefulness and all mastery thresholds/formulas remain proposals awaiting player feedback. The user needs frequent actions for interruption testing; do not tune stamina yet. Talent unlocks, discoveries, a full tree, account power, equipment, loot, saves, multiplayer and gameplay menus are not implemented by this baseline or authorized for runtime implementation during the current design pass. See `docs/HEAVY_PRACTICE_EXPERIMENT.md`, `docs/TECHNIQUE_EXPERIMENT.md`, and `docs/ENEMY_SANDBOX.md`.
+Preserve existing scenes, attack assets, controls, balance, stamina, third-party assets, Packages and ProjectSettings. Keep discoveries distinct from ownership. Do not add unrelated systems. C1 must distinguish real, harmless and ambiguous evasions before discovery depends on it. See docs/OVERNIGHT_PROGRESS_REPORT.md for actual status, executed checks and next steps; no gameplay feel is established by automated checks.

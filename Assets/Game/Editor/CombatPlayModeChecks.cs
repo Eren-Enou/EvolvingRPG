@@ -392,7 +392,7 @@ namespace EvolvingRPG.Editor
             if (mouse != null && mouse.added) InputSystem.RemoveDevice(mouse);
             Directory.CreateDirectory("Logs");
             string report = "Unity " + Application.unityVersion + " automated combat Play-mode checks\n" + string.Join("\n", results)
-                + "\n" + (errors.Count == 0 ? "PASS: no runtime Console errors captured." : string.Join("\n", errors));
+                + "\n" + (errors.Count == 0 ? "PASS: no runtime Console errors captured." : "FAIL\n" + string.Join("\n", errors));
             File.WriteAllText("Logs/CombatPlayModeChecks.txt", report);
             Debug.Log(report);
             if (exit) EditorApplication.ExitPlaymode();

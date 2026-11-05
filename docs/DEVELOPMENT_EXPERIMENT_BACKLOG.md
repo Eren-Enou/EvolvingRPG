@@ -48,6 +48,8 @@ Dependency: none beyond existing playable scenes. Programming is not automatical
 
 ## P1 — Defensive evidence, no rewards
 
+Implementation prepared: see [EVASION_EVIDENCE_EXPERIMENT.md](EVASION_EVIDENCE_EXPERIMENT.md). Runtime and Editor sources pass offline compilation. The manual scene builder, isolated/lifecycle/physics fixtures and native-motor checks still require the user to execute them in the Editor. This is not a passed gameplay gate or authorization for P2/P3.
+
 **Question:** Can the system distinguish a threatened starting position avoided during dodge from a harmless miss?
 
 Implement only C1 in [the discovery specification](CONTEXTUAL_DISCOVERY_EXPERIMENT.md): shared pure strike query, source-specific threat identity, bounded dodge/trajectory evidence, conservative receipt and explanation. Copy a separate scene with Unity authoring APIs when implementation is assigned; preserve earlier scenes.

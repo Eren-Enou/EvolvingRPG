@@ -10,6 +10,7 @@ namespace EvolvingRPG.Combat
         public readonly Color Color;
         public readonly Vector3? SourcePosition;
         public readonly HitReceiver Source;
+        public readonly EnemyThreat? Threat;
 
         public HitData(AttackDefinition attack) : this(new AttackSnapshot(attack)) { }
 
@@ -21,9 +22,11 @@ namespace EvolvingRPG.Combat
             Color = attack.Color;
             SourcePosition = sourcePosition;
             Source = source;
+            Threat = null;
         }
 
-        public HitData(string name, float damage, float poiseDamage, Color color, Vector3 sourcePosition, HitReceiver source = null)
-        { AttackName = name; Damage = damage; PoiseDamage = poiseDamage; Color = color; SourcePosition = sourcePosition; Source = source; }
+        public HitData(string name, float damage, float poiseDamage, Color color, Vector3 sourcePosition, HitReceiver source = null,
+            EnemyThreat? threat = null)
+        { AttackName = name; Damage = damage; PoiseDamage = poiseDamage; Color = color; SourcePosition = sourcePosition; Source = source; Threat = threat; }
     }
 }

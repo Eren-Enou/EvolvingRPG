@@ -1,6 +1,6 @@
 # Proposed V0.4 C — Evasion to discovery
 
-Status: implementation specification for a future experiment, not implemented or validated. All thresholds and the Retaliatory Momentum behavior are proposals. The existing PracticeTest experiment is unchanged. See [the combat evolution lab](COMBAT_EVOLUTION_LAB.md) for alternatives and [the talent charter](EVOLVING_TALENT_SYSTEM.md) for established requirements.
+Status: **C1 implementation prepared, actual Editor validation pending**; see [EVASION_EVIDENCE_EXPERIMENT.md](EVASION_EVIDENCE_EXPERIMENT.md) for the implemented supported envelope and commands. C2 knowledge/discovery and C3 Retaliatory Momentum remain future proposals, not implemented or validated. The existing PracticeTest experiment is unchanged. See [the combat evolution lab](COMBAT_EVOLUTION_LAB.md) for alternatives and [the talent charter](EVOLVING_TALENT_SYSTEM.md) for established requirements.
 
 ## Hypothesis and smallest deliverable
 
@@ -8,13 +8,15 @@ A player who deliberately invests in an advancing Heavy and demonstrates actual 
 
 Build this in three independent steps: C1 defensive evidence only; C2 knowledge/journal only; C3 optional combat-effect comparison. No full tree, paid assets, invulnerability, attack cancellation, stamina rebalance or save system is required by these steps. Investment fixtures must be explicitly labeled session-only; real purchase and save/reload follow in V0.4 D.
 
-## What the current code cannot prove
+## Why C1 was needed
 
-CombatObservation records accepted/completed/interrupted dodges, but no threat association or dodge trajectory. SandboxEnemy commits facing and attempts hits during its active interval, but a miss does not currently say whether the cause was a dodge, range, facing, a wall or something else. Its outgoing raw HitData also does not identify an enemy strike to the receiver. EnemyImpactContext describes the enemy hit by the player; it is not incoming defensive evidence.
+Before C1, CombatObservation recorded accepted/completed/interrupted dodges without threat association or trajectory. SandboxEnemy misses did not distinguish dodge, range, facing or a wall, and outgoing raw HitData had no committed strike identity. C1 now supplies a separate bounded diagnostic receipt and incoming identity. EnemyImpactContext still describes the enemy hit by the player; it is not incoming defensive evidence.
 
 Therefore neither "dodge completed" nor "dodge followed by Heavy" is successful-evasion evidence. Do not reuse the practice points, latest enemy timestamp or no-damage outcome as a substitute.
 
 ## C1: proposed authoritative evidence boundary
+
+The implementation guide above is authoritative for current bounds. Verified receipts wait for both completions; known rejections or unverified interruptions/resets can finalize earlier. The following specification records the rationale, not a claim that Editor checks have passed.
 
 Keep the current enemy geometry as the initial contract. Factor its range/cone/line-of-sight decision into a side-effect-free query used by both actual hit attempts and evidence evaluation. Actual hit application remains separate. This is not a weapon-volume collision upgrade.
 

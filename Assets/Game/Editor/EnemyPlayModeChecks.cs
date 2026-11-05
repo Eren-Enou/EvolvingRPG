@@ -204,7 +204,7 @@ namespace EvolvingRPG.Editor
                     if (Time.time - started < 4f) return;
                     var health = player.GetComponent<CombatVitality>();
                     Require(guard.AttacksStarted > 0 && guard.HitsLanded > 0 && health.Health < health.MaximumHealth,
-                        "normal frame loop did not approach, telegraph and hit player");
+                        "normal frame loop did not approach, telegraph and hit player: " + guard.Phase + " attacks=" + guard.AttacksStarted + " hits=" + guard.HitsLanded + " actor=" + player.transform.position + " enemy=" + guard.transform.position);
                     hud.ResetEncounter();
                     Require(health.Health == health.MaximumHealth && guard.Phase == EnemyPhase.Idle && guard.AttacksStarted == 0,
                         "live encounter reset failed");

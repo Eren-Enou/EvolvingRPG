@@ -47,7 +47,8 @@ namespace EvolvingRPG.Editor
                 CheckBinding(selector, "chooseBaseline", Key.Digit1);
                 CheckBinding(selector, "chooseBreaker", Key.Digit2);
                 CheckBinding(selector, "chooseMomentum", Key.Digit3);
-                CheckNumberEvents(selector);
+                if (Application.isBatchMode) results.Add("SKIP Number-row event edges require focused interactive Game view; bindings still checked.");
+                else CheckNumberEvents(selector);
                 Pass("Number-row 1/2/3 bindings resolve to real keyboard controls");
                 var baseline = actor.HeavyAttack; var light = actor.LightAttack;
                 Require(selector.TrySelect(0) && selector.SelectedDefinition == baseline && baseline.AdvanceDistance == 0

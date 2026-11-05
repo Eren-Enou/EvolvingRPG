@@ -120,6 +120,21 @@ namespace EvolvingRPG.Editor
                         if (test == 2) Require(bystander.Health < bystander.MaximumHealth, "bystander-only fixture did not actually hit");
                         Require(Mathf.Approximately(discovery.Momentum.AdvanceDistance, 1.2f) && Mathf.Approximately(discovery.Momentum.Recovery, .45f)
                             && Mathf.Approximately(discovery.Momentum.StaminaCost, 20) && actor.GetComponent<HeavyPractice>() == null, "shared asset/stamina/practice changed");
+                        if (owner != null)
+                        {
+                            var review = owner.Review.Latest;
+                            bool evolved = test > 0 && test < 6;
+                            float expectedMiss = test == 3 || test == 4 || test == 6 || test == 8 ? .55f : 0;
+                            float expectedLinked = test >= 2 && test <= 5 ? .25f : 0;
+                            Require(review != null && review.Sequence == actor.AcceptedActions && !review.Interrupted
+                                && review.Evolved == evolved && Mathf.Abs(review.Displacement - distance) < .03f
+                                && Mathf.Abs(review.Duration - duration) < .03f
+                                && Mathf.Abs(review.PlannedAdvance - (evolved ? 1.6f : 1.2f)) < .001f
+                                && Mathf.Abs(review.MissRecovery - expectedMiss) < .001f
+                                && Mathf.Abs(review.LinkedRecovery - expectedLinked) < .001f,
+                                "native action review disagrees with actual committed form, travel or recovery: case " + test);
+                            Require(!evolved || review.LinkedHit == (test == 1), "review treated bystander or reset generation as linked success");
+                        }
                         File.AppendAllText(Report, "PASS Native case " + test + " / " + new[] { "ordinary reference", "linked return; previews/rejections do not consume", "bystander hit retains target miss cost", "complete miss retains both drawbacks", "wall clips evolved travel", "post-acceptance target reset retains miss cost", "expired opportunity falls back to ordinary Momentum", "reset before acceptance falls back to ordinary Momentum", "defeated target falls back to ordinary Momentum" }[test]
                             + " / displacement=" + distance.ToString("0.000") + " m / duration=" + duration.ToString("0.000") + " s\n");
                         if (temporary != null) { UnityEngine.Object.DestroyImmediate(temporary); temporary = null; bystander = null; }

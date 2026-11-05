@@ -46,6 +46,7 @@ namespace EvolvingRPG.Editor
             results.Clear();
             GameObject actor = null, dummy = null;
             AttackDefinition definition = null;
+            CombatActionReview review = null;
             try
             {
                 actor = new GameObject("Temporary snapshot check actor");
@@ -56,6 +57,7 @@ namespace EvolvingRPG.Editor
                 controller.enabled = false; // Never run the native motor in this synchronous fixture.
                 var actions = actor.AddComponent<CombatActions>();
                 actor.SetActive(true);
+                review = new CombatActionReview(actions, actor.transform); review.Attach(); review.Attach();
                 var stamina = actor.GetComponent<CombatStamina>();
                 definition = ScriptableObject.CreateInstance<AttackDefinition>();
                 definition.DisplayName = "Committed test strike";
@@ -128,6 +130,9 @@ namespace EvolvingRPG.Editor
                     Require(record.Attack.HasValue && record.Attack.Value.Damage == 15f
                         && record.Summary.Contains("Committed test strike"), "historical evidence changed with authoring asset");
                 Pass("Original recovery/completion; stable historical action values and name");
+                Require(review.Count == 1 && review.Latest.Name == "Committed test strike" && review.Latest.Contacts == 1
+                    && review.Latest.Damage == 15f && review.Latest.Poise == 12f && !review.Latest.Interrupted,
+                    "review duplicated a subscription or reread mutable authored values");
 
                 Require(actions.TryAttack(definition) && actions.CommittedAttack.Damage == 100f
                     && actions.CommittedAttack.Windup == 10f && actions.CommittedAttack.StaminaCost == 30f,
@@ -137,6 +142,9 @@ namespace EvolvingRPG.Editor
                     && actions.Diagnostics.Records[actions.Diagnostics.Records.Count - 1].Attack.Value.Damage == 100f,
                     "interruption lost or retained active snapshot");
                 actions.enabled = true;
+                Require(review.Count == 2 && review.Latest.Interrupted && review.Latest.Name == "Changed next strike"
+                    && review.Latest.MissRecovery == 0 && review.Latest.LinkedRecovery == 0,
+                    "interrupted review claimed completed recovery or lost commitment");
                 Require(actions.TryDodge() && !actions.HasCommittedAttack, "dodge inherited attack snapshot");
                 Pass("Next attack captures edits; interruption clears snapshot; dodge has no attack snapshot");
 
@@ -144,10 +152,25 @@ namespace EvolvingRPG.Editor
                 actions.enabled = true;
                 UnityEngine.Object.DestroyImmediate(pivot.gameObject);
                 CheckMissFeedback(actor, actions, target, committed);
+                Require(review.Latest.MissReason == MeleeMissReason.NoTargetInReach && !review.Latest.Interrupted,
+                    "completed miss review lost geometry reason or dodge overwrote attack review");
+                definition.StaminaCost = 0; // Temporary fixture only; no authored asset edits.
+                for (int i = 0; i < 9; i++)
+                {
+                    // Presentation history must remain bounded even during frequent interruption testing.
+                    Require(actions.TryAttack(definition), "review bound fixture rejected"); actions.Interrupt("review bound fixture");
+                }
+                Require(review.Count == 6, "review history is unbounded");
+                review.Dispose(); review.Dispose();
+                Require(actions.TryAttack(definition), "detached review fixture rejected"); actions.Interrupt("detached");
+                Require(review.Count == 6, "disposed review remained subscribed");
+                review.Clear(); Require(review.Count == 0 && review.Latest == null, "review clear retained character history");
+                Pass("Action review: actual impacts, immutable labels, interruption, miss reason, duplicate subscription, bounded history and disposal");
             }
             catch (Exception exception) { errors.Add(exception.ToString()); }
             finally
             {
+                review?.Dispose();
                 if (actor != null) UnityEngine.Object.DestroyImmediate(actor);
                 if (dummy != null) UnityEngine.Object.DestroyImmediate(dummy);
                 if (definition != null) UnityEngine.Object.DestroyImmediate(definition);

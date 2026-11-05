@@ -206,9 +206,8 @@ namespace EvolvingRPG.Combat
             float activeEnd = attack.Windup + attack.ActiveTime;
             if (elapsed >= attack.Windup && previous < activeEnd)
             {
-                int hits = detector.ResolveSwing(attack, Facing, hitTargets, out MeleeMissReason queryReason, ReportResolvedHit);
+                detector.ResolveSwing(attack, Facing, hitTargets, out MeleeMissReason queryReason, ReportResolvedHit);
                 if (queryReason > missReason) missReason = queryReason;
-                if (hits > 0) Message = $"{attack.DisplayName} HIT | {attack.Damage:0} damage / {attack.PoiseDamage:0} poise";
             }
             Phase = elapsed < attack.Windup ? CombatPhase.Windup : elapsed < activeEnd ? CombatPhase.Active : CombatPhase.Recovery;
             float recoveryTime = attack.Recovery + (hitTargets.Count == 0 ? attack.MissRecovery : 0)
@@ -235,6 +234,9 @@ namespace EvolvingRPG.Combat
         private void ReportResolvedHit(HitReceiver target, HitResolution resolution)
         {
             if (CommittedContext.HasValue && CommittedContext.Value.Matches(target, resolution)) contextTargetHit = true;
+            Message = $"{CommittedAttack.DisplayName} HIT | {resolution.DamageApplied:0.#} damage / {resolution.PoiseApplied:0.#} poise applied"
+                + (resolution.Guarded ? " | guarded" : "") + (resolution.Vulnerable ? " | opening" : "")
+                + (resolution.PoiseBroken ? " | poise break" : "");
             Observe(CombatObservationKind.HitResolved, target, resolution);
         }
 

@@ -81,6 +81,9 @@ namespace EvolvingRPG.Editor
                 Require(actor.TryAttack(momentum), "could not start hit Momentum");
                 TickAt(actor, committed.Windup + 0.01f);
                 Require(actor.Diagnostics.Hits == 1, "committed hit did not resolve");
+                var applied = actor.Diagnostics.Records[actor.Diagnostics.Records.Count - 1].Resolution;
+                Require(actor.Message.Contains($"{applied.DamageApplied:0.#} damage / {applied.PoiseApplied:0.#} poise applied")
+                    && (!applied.Guarded || actor.Message.Contains("guarded")), "hit message reported authored rather than applied impact");
                 TickAt(actor, committed.Duration + 0.02f);
                 Require(!actor.Busy && actor.Diagnostics.Misses == 1, "successful hit inherited miss penalty");
                 Pass("Resolved enemy hit uses ordinary recovery, including guarded contact");

@@ -22,6 +22,7 @@ namespace EvolvingRPG.Progression
         public string SaveLocation => saves?.Location;
         readonly InputAction inspect = new InputAction("InspectDevelopment", InputActionType.Button, "<Keyboard>/tab");
         public CharacterDevelopmentState State { get; private set; }
+        public CombatActionReview Review { get; private set; }
         public string Message { get; private set; } = "One experimental point: inspect Breaker or Momentum with Tab at spawn.";
         public bool MenuOpen => menu;
         public bool MomentumOwned => State != null && State.Owns(DevelopmentIds.Momentum);
@@ -36,6 +37,7 @@ namespace EvolvingRPG.Progression
             actions = GetComponent<CombatActions>(); discovery = GetComponent<ContextualDiscovery>(); trial = GetComponent<RetaliatoryMomentumTrial>();
             mouseLook = GetComponent<PlaygroundMouseLook>(); playerInput = GetComponent<PlayerInput>();
             State = new CharacterDevelopmentState(); spawn = transform.position;
+            Review = new CombatActionReview(actions, transform);
             saves = new CharacterSaveStore(System.IO.Path.Combine(Application.persistentDataPath, "CharacterDevelopmentPrototype"));
         }
         void Start()
@@ -45,10 +47,11 @@ namespace EvolvingRPG.Progression
         }
         void OnEnable()
         {
+            Review?.Attach();
             inspect.Enable();
             if (discovery != null && discovery.Ledger != null) { discovery.Ledger.Changed -= OnKnowledge; discovery.Ledger.Changed += OnKnowledge; OnKnowledge(); }
         }
-        void OnDisable() { inspect.Disable(); CloseMenu(); if (discovery != null && discovery.Ledger != null) discovery.Ledger.Changed -= OnKnowledge; }
+        void OnDisable() { inspect.Disable(); CloseMenu(); Review?.Dispose(); if (discovery != null && discovery.Ledger != null) discovery.Ledger.Changed -= OnKnowledge; }
         void OnKnowledge() => State.RecordKnowledge(discovery.Ledger.Exchanges);
         bool SafeOpponents()
         {
@@ -70,6 +73,7 @@ namespace EvolvingRPG.Progression
         {
             if (!CanDevelop) { Message = "Return to spawn with R before creating a fresh character."; return false; }
             State = new CharacterDevelopmentState(); discovery.RestoreCharacterKnowledge(0); Apply();
+            Review.Clear();
             Message = "Fresh character: no knowledge, purchases or active evolution. Unsaved previous character was replaced."; return true;
         }
         #if UNITY_EDITOR
@@ -86,6 +90,7 @@ namespace EvolvingRPG.Progression
             if (!saves.Load(slot, out var loaded, out string message)) { Message = message; return false; }
             // Validate first; only then replace live state and reset the whole encounter.
             encounter.ResetEncounter(); State = loaded;
+            Review.Clear();
             discovery.RestoreCharacterKnowledge(State.Exchanges); Apply(); Message = message; return true;
         }
         void Apply()

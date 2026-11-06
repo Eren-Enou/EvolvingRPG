@@ -1,6 +1,65 @@
 # Continued development report — 2026-11-05
 
-## Latest follow-up — durable Heavy experience
+## Latest follow-up - offline character-state safeguards
+
+Started clean at `13ceb84` on `development/heavy-experience`; continued on `development/offline-character-checks`. Implementation checkpoint: **768e96f**. This assignment used direct files and noninteractive CLI only. No computer-use tools, screenshots, UI automation, Unity launch/batch mode/Editor control, scene/prefab changes or personal-save access occurred. Unity results in the historical section below do not verify this follow-up.
+
+### Implemented and reproduced
+
+The first offline run compiled actual production state code and reproduced `Owns("") == true` on a fresh character: **8/9 cases passed, 9,070 assertions, exit 1**. The unselected primary ID was empty. Ownership queries now reject null/empty IDs. Existing purchase/configuration validation already rejected empty IDs, so this was not a demonstrated power exploit.
+
+Investment previews now capture character GUID, revision and development ID in an immutable transient value. Confirmation rejects another character even at the same revision; existing revision checks reject intervening history/knowledge/configuration changes. DevelopmentPanel uses this command through OwnedCharacter's safe-spawn boundary. It clears pending confirmations when observing a different character identity; fresh/load also clear the fresh-character confirmation latch.
+
+This is defense against stale/replayed/external replacement intent, not a reproduced ordinary button-path purchase bug: those paths already cleared investment previews. The revision-only overload remains for trusted diagnostics. This is not authentication or a session nonce: restoring an identical character/revision still represents the same model intent, while the panel clears pending intent on explicit load.
+
+The save DTO and discovery enum were extracted into standalone game-owned source files without changing namespace, type names, field types or enum values. Store algorithms are unchanged. Save schema remains **2**, with existing non-mutating schema-1 migration and protected unknown-content policy. The preview is never persisted. No new reward, automatic purchase, refinement, stamina change or combat modifier was added. History changes revision without changing build revision or accepted combat snapshots.
+
+### Checks actually executed
+
+Executed `dotnet run --project tools/CharacterStateChecks/CharacterStateChecks.csproj --configuration Release --no-launch-profile` with installed SDK **6.0.301**, runtime **6.0.6**, and ignored local CLI home. No dependencies were installed/downloaded; package sources are cleared. Final result: **10/10 cases, 9,082 assertions, exit 0**, including 3,000 seeded command steps. Repeated invariants are not thousands of independent gameplay scenarios.
+
+The harness directly links five production files: CharacterDevelopmentState.cs, CharacterSaveData.cs, DevelopmentPurchasePreview.cs, HeavyExperienceCatalog.cs and DiscoveryKnowledge.cs. No Unity stubs or copied domain implementation. Cases cover identity, empty/default/cross-character/stale/replayed confirmations, ownership/knowledge/activation separation, once-only grants, history validation/deduplication, non-mutating migration, illegal DTOs, unknown-content fallback and array isolation. Portable JSON roundtrip uses **System.Text.Json**, not Unity JsonUtility. Fixtures are in-memory and never access personal saves. Exact command, source paths and prerequisites: tools/CharacterStateChecks/README.md.
+
+Also passed `git diff --check` and static checks for protected-path scope, unique extracted type definitions and unique new meta GUIDs. Compiler outputs/cache are ignored.
+
+**Not executed:** Unity project compilation; all Editor suites, including the added DevelopmentChecks assertions; panel integration; native input/physics/receipt timing; Unity JsonUtility; file-store I/O/backups; standalone build; player testing. OwnedCharacter, DevelopmentPanel and CharacterSaveStore are excluded from the offline compilation. .NET 6 success does not establish Unity assembly/runtime/lifecycle/serialization compatibility. Historical file-store tests were not rerun. No gameplay feel, balance or fairness validation is claimed.
+
+### Changed files
+
+Paths below are relative to the repository root:
+
+- Assets/Game/Progression/CharacterDevelopmentState.cs - empty-ID ownership fix and bound preview API.
+- Assets/Game/Progression/DevelopmentPurchasePreview.cs and .meta - transient immutable intent.
+- Assets/Game/Progression/OwnedCharacter.cs - bound command through existing safe-development checks.
+- Assets/Game/Progression/DevelopmentPanel.cs - capture/confirm bound intent and reset pending confirmation state.
+- Assets/Game/Progression/CharacterSaveData.cs and .meta - unchanged DTO extracted from CharacterSaveStore.cs.
+- Assets/Game/Progression/CharacterSaveStore.cs - DTO definition removed; store logic unchanged.
+- Assets/Game/Combat/DiscoveryKnowledge.cs and .meta - unchanged enum extracted from RetaliationDiscovery.cs.
+- Assets/Game/Combat/RetaliationDiscovery.cs - enum definition removed; discovery logic unchanged.
+- Assets/Game/Editor/DevelopmentChecks.cs - empty/default/cross-character/replay assertions added, not run in Unity.
+- tools/CharacterStateChecks/{Program.cs, CharacterStateChecks.csproj, NuGet.Config, .gitignore, README.md} - explicit offline harness; no import/startup execution hook.
+- AGENTS.md; docs/MILESTONES.md; docs/CHARACTER_DEVELOPMENT_PLAYGROUND.md; docs/CHARACTER_IDENTITY_PATH.md; this report - constraints, contracts, verification gates and next experiments.
+
+### Manual Unity verification - pending, not executed
+
+No new Inspector wiring or scene rebuild is intended. Save your current work and use the existing Editor, without launching another instance against this project.
+
+1. Allow scripts to import and compile. Resolve any new compile/Console error before accepting the slice.
+2. With Play stopped and current scene saved, run **Tools > EvolvingRPG > Run Extended Regression Checks**. This existing twelve-suite runner includes the new development model assertions. Inspect fresh reports and Console; older passing logs are not this run's evidence. Automated file fixtures use isolated ignored Logs locations.
+3. Open **Assets/Game/Scenes/DevelopmentTest.unity**, press Play and click Game view. At spawn press **Tab**, preview Momentum, cancel, preview again and confirm. Expect one point spent once, Momentum selected, no unsolicited evolution. Another primary must remain unavailable. Close Tab, press **R**, reopen Tab and verify ownership remains.
+4. Create a fresh experimental character through confirmation. Expect a new ID, one point, Baseline and no prior investment/save confirmation. Start a fresh-character confirmation, then load a disposable test character: the next Fresh click must request confirmation again. Use only slots whose existing contents you deliberately intend to replace; do not overwrite personal progress for this check. Prefer the isolated automated save fixtures. Cross-character model rejection is covered offline; panel lifecycle still needs Unity.
+5. Check **WASD, Q/E, Space, mouse look/wheel, LMB/RMB, Shift**, dodge while strafing, obstacle collision and existing opponents. Complete a live Heavy, **R**, **Tab**: facts remain descriptive and repetition grants no points. Report feel separately from technical success.
+6. Exit Play and inspect for new Console errors. Save/reload, discovery/return and experience integration must pass on this head before claiming verification.
+
+### Next smallest milestone
+
+Manually verify this safeguard in Unity, then observe existing DevelopmentTest before choosing another active talent. docs/CHARACTER_IDENTITY_PATH.md retains exactly three proposals: fair descriptive experience, a deliberate familiarity refinement only if its isolated comparison earns it, and contextual use/decline of the existing return. Each includes the decision, foundation, liability, smallest comparison, support/revise/reject evidence, prerequisites and what can be prepared offline.
+
+State contracts cannot decide whether useful trades deserve credit or whether a refinement creates a meaningful choice. Finite facts do not solve sustained mastery or recurring rewards. Do not build that economy from this test result. Final documentation checkpoint and push outcome are supplied in the handoff and branch log.
+
+---
+
+## Historical follow-up — durable Heavy experience
 
 Started clean at `61436d2` on `development/combat-readability`; continued on `development/heavy-experience`. Unity 6000.6.7f1 was already open and stopped on DevelopmentTest. No second Editor, scene/prefab overwrite, vendor modification or personal-save write was used.
 

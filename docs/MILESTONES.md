@@ -4,6 +4,8 @@
 
 **Long-term progression requirements:** `EVOLVING_TALENT_SYSTEM.md` defines the established talent-system direction and labels mechanics that remain proposals. `PROGRESSION_DEVELOPMENT_PATH.md` maps that charter to small validation experiments. The continued assignment implemented **V0.4 D: character-owned development and minimal versioned saves**, after the focused input gate passed. C1/C2/C3 remain preserved comparisons. See [CONTINUED_DEVELOPMENT_REPORT.md](CONTINUED_DEVELOPMENT_REPORT.md) and [CHARACTER_DEVELOPMENT_PLAYGROUND.md](CHARACTER_DEVELOPMENT_PLAYGROUND.md). All economy/commitment rules remain experimental; player feel and full mastery integration are not complete. Preserve the engine version declared by `ProjectSettings/ProjectVersion.txt` rather than changing it to match the historical V0.1 version target.
 
+**Latest offline follow-up (2026-11-05):** ownership rejects empty IDs; investment previews bind character identity and revision. A .NET harness checks five actual production files: 10 cases, 9,082 assertions, including 3,000 seeded command steps. No Unity invocation, Unity compilation, file-store verification or player validation occurred. Next gate: manually compile in the existing Editor, run Extended Regression Checks and verify DevelopmentTest confirmations and controls. This hardens V0.4 D; it adds no active talent or mission system. See the latest continued report and tools/CharacterStateChecks/README.md.
+
 ## V0.1 — Camera + movement (first task)
 
 **Goal:** A controllable character whose positioning feels good.

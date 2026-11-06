@@ -129,6 +129,16 @@ namespace EvolvingRPG.Editor
             string firstAttempt=loop.Attempt.Id;
             Require(!loop.Return(ExpeditionPhase.Completed) && !loop.Deploy(ExpeditionAttempt.Relay)
                 && !owner.SaveSlot("A") && !owner.LoadSlot("A") && !owner.FreshCharacter(),"mission boundaries allowed reward/redeploy/save/load/fresh");
+            Vector3 deployedPosition=owner.transform.position;
+            // Remove opponent-phase restrictions so only the mission gate can reject this safe-position fixture.
+            foreach(var enemy in enemies) enemy.enabled=false;
+            Place(owner.gameObject,new Vector3(55,.05f,0));
+            yield return null;
+            Require(!owner.CanDevelop && !owner.TryOpenMenu() && !owner.SaveSlot("A") && !owner.LoadSlot("A")
+                && !owner.FreshCharacter() && !owner.ConfigureHeavy(DevelopmentIds.Baseline,false),
+                "mission lifecycle gate relied only on distance from hub");
+            Place(owner.gameObject,deployedPosition);
+            foreach(var enemy in enemies) enemy.enabled=true;
             yield return .2f;
             Require(actor.TryDodge(),"native mission dodge rejected: "+actor.Message);
             while(actor.Busy) yield return null;

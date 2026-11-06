@@ -46,6 +46,8 @@ New loop A/B records live under `Application.persistentDataPath/RelayPrototype`;
 
 Only deliberate hub saves persist. Mid-mission save/load/create/development is rejected. Attempts, commitments, temporary retaliation opportunities and encounter positions are never saved. Closing during a mission or loading an older record rolls back to the last explicit save, including unsaved rewards/investments. A saved milestone cannot pay again after reload. Recovering a pre-mission backup restores the complete prior character, not a previous wallet combined with a new milestone.
 
+The mission-state restriction is explicit, not just a consequence of arena distance: an optional same-actor `ICharacterDevelopmentBoundary` blocks development/save/load/configuration while the attempt is active, even at hub coordinates. Old standalone scenes have no boundary and retain their existing safe-spawn checks. The prepared native suite includes a controlled move back to hub coordinates during an active attempt to verify this invariant; execution remains pending.
+
 ## Prepared tests and build — execution pending
 
 From **one saved, stopped scene**, choose **Tools > EvolvingRPG > Run Extended Regression Checks**. Fourteen suites include preserved movement/combat/ownership/history/trade checks and the new relay suite. Expanded real JsonUtility/file replacement checks cover schema-1/2 migration, schema-3 milestone/wallet roundtrip, repeat loads and whole-record recovery. Reports are in ignored Logs; failure, skip, incomplete marker or Console errors fail acceptance.

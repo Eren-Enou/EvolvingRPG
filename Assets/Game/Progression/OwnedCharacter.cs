@@ -6,6 +6,12 @@ using UnityEngine.InputSystem;
 
 namespace EvolvingRPG.Progression
 {
+    // Optional same-actor lifecycle gate, independent of safe-spawn distance and combat readiness.
+    public interface ICharacterDevelopmentBoundary
+    {
+        bool AllowsDevelopment { get; }
+    }
+
     [RequireComponent(typeof(CombatActions), typeof(ContextualDiscovery))]
     public sealed class OwnedCharacter : MonoBehaviour, ICharacterDevelopment
     {
@@ -22,6 +28,7 @@ namespace EvolvingRPG.Progression
         Vector3 spawn;
         bool menu, previousMouseLook, previousInput;
         CharacterSaveStore saves;
+        ICharacterDevelopmentBoundary boundary;
         public string SaveLocation => saves?.Location;
         readonly InputAction inspect = new InputAction("InspectDevelopment", InputActionType.Button, "<Keyboard>/tab");
         public CharacterDevelopmentState State { get; private set; }
@@ -33,6 +40,7 @@ namespace EvolvingRPG.Progression
         public bool RetaliationActive => State != null && State.RetaliationActive && State.Heavy == DevelopmentIds.Momentum;
         public int BuildRevision => State?.BuildRevision ?? 0;
         public bool CanDevelop => actions != null && !actions.Busy && !actions.MovementBlocked
+            && (boundary == null || boundary.AllowsDevelopment)
             && Vector3.Distance(transform.position, spawn) < developmentRadius && SafeOpponents();
         public void Configure(AttackDefinition original, AttackDefinition planted, AttackDefinition advancing, EnemySandboxHUD hud)
         { baseline = original; breaker = planted; momentum = advancing; encounter = hud; }
@@ -40,6 +48,7 @@ namespace EvolvingRPG.Progression
         {
             actions = GetComponent<CombatActions>(); discovery = GetComponent<ContextualDiscovery>(); trial = GetComponent<RetaliatoryMomentumTrial>();
             mouseLook = GetComponent<PlaygroundMouseLook>(); playerInput = GetComponent<PlayerInput>();
+            boundary = GetComponent<ICharacterDevelopmentBoundary>();
             State = new CharacterDevelopmentState(initialFixturePoints); spawn = transform.position;
             if (initialFixturePoints == 0) Message = "Fresh Warrior: earn a mission milestone point before making a deliberate investment.";
             Review = new CombatActionReview(actions, transform);

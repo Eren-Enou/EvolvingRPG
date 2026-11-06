@@ -8,7 +8,7 @@ namespace EvolvingRPG.Expeditions
 {
     // One live Warrior; hub and mission are authored zones in one scene. No global session singleton.
     [RequireComponent(typeof(OwnedCharacter))]
-    public sealed class ExpeditionLoop : MonoBehaviour
+    public sealed class ExpeditionLoop : MonoBehaviour, ICharacterDevelopmentBoundary
     {
         [SerializeField] OwnedCharacter character;
         [SerializeField] EnemySandboxHUD encounter;
@@ -20,6 +20,7 @@ namespace EvolvingRPG.Expeditions
         CombatVitality vitality;
         public ExpeditionAttempt Attempt { get; private set; }
         public bool InMission => Attempt != null && Attempt.Phase == ExpeditionPhase.InProgress;
+        public bool AllowsDevelopment => !InMission;
         public bool BoardOpen { get; private set; }
         public string Report { get; private set; } = "Fresh Warrior: restore the relay to earn your first development point. No automatic investment.";
         public OwnedCharacter Character => character;

@@ -30,6 +30,8 @@ namespace EvolvingRPG.Editor
         {
             if (Application.isBatchMode || EditorApplication.isPlayingOrWillChangePlaymode || SessionState.GetBool(Active, false))
                 throw new InvalidOperationException("Use a stopped interactive Editor with no check already running.");
+            if (SceneManager.sceneCount != 1)
+                throw new InvalidOperationException("Run from one saved scene; additive editing context is not replaced by checks.");
             for (int i = 0; i < SceneManager.sceneCount; i++)
                 if (SceneManager.GetSceneAt(i).isDirty || string.IsNullOrEmpty(SceneManager.GetSceneAt(i).path))
                     throw new InvalidOperationException("Save scene edits before running extended checks.");

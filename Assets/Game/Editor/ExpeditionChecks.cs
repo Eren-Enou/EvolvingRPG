@@ -158,11 +158,16 @@ namespace EvolvingRPG.Editor
             }
             yield return null;
             Require(loop.Attempt.ObjectivesReady,"actual defeated defenders did not satisfy objective");
+            int completedFacts=owner.State.ExperienceCount, completedExchanges=owner.State.Exchanges;
             Require(!loop.Return(ExpeditionPhase.Completed),"completion ignored relay proximity");
             Place(owner.gameObject,relay.position+Vector3.back*1.5f);
             InputSystem.QueueStateEvent(testKeyboard,new KeyboardState(Key.F)); yield return .05f;
             InputSystem.QueueStateEvent(testKeyboard,new KeyboardState()); yield return .05f;
             Require(!loop.InMission && loop.BoardOpen && owner.CanDevelop,"focused native F completion did not return to safe hub report");
+            Require(owner.State.ExperienceCount==completedFacts && owner.State.Exchanges==completedExchanges
+                && owner.GetComponent<EvasionEvidence>().Pending==null
+                && !owner.GetComponent<RetaliatoryMomentumTrial>().Opportunity.HasValue && !actor.CommittedContext.HasValue,
+                "return lost completed knowledge or retained temporary combat opportunity");
             Require(owner.State.RelayMilestone && owner.State.Balance==1 && owner.State.Primary=="" && owner.State.BuildRevision==0
                 && !loop.Return(ExpeditionPhase.Completed) && !owner.Purchase(stale),"reward duplicated, auto-invested or accepted stale preview");
             Require(owner.Purchase(owner.State.PreviewPurchase(DevelopmentIds.Momentum)) && owner.State.Balance==0

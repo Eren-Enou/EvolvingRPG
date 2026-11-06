@@ -24,6 +24,8 @@ namespace EvolvingRPG.Expeditions
         public string Report { get; private set; } = "Fresh Warrior: restore the relay to earn your first development point. No automatic investment.";
         public OwnedCharacter Character => character;
         string observedCharacter;
+        int experienceAtDeployment, exchangesAtDeployment;
+        float departedAt;
         Vector2 scroll;
         public void Configure(OwnedCharacter owner, EnemySandboxHUD hud, SandboxEnemy guard, SandboxEnemy mobile,
             Transform missionBoard, Transform developer, Transform saves, Transform objective, Transform entry)
@@ -87,6 +89,9 @@ namespace EvolvingRPG.Expeditions
             guarded.ResetEnemy(); fast.ResetEnemy();
             Attempt = new ExpeditionAttempt(character.State.CharacterId, contract);
             if (!Attempt.Deploy(Attempt.Id)) return false;
+            experienceAtDeployment = character.State.ExperienceCount;
+            exchangesAtDeployment = character.State.Exchanges;
+            departedAt = Time.time;
             Teleport(arrival.position);
             Report = "Attempt " + Attempt.Id.Substring(0, 8) + ": no mid-mission save. Defeat/abandon gives no completion point; completed experience remains in memory until explicit hub save.";
             return true;
@@ -96,13 +101,17 @@ namespace EvolvingRPG.Expeditions
             if (!InMission || outcome == ExpeditionPhase.Completed && (!Attempt.ObjectivesReady || !Near(relay))) return false;
             if (outcome != ExpeditionPhase.Completed && outcome != ExpeditionPhase.Failed && outcome != ExpeditionPhase.Abandoned) return false;
             if (!Attempt.Finish(Attempt.Id, outcome)) return false;
+            // Snapshot retained facts before encounter reset changes session-only diagnostic text.
+            string experienceReport = " Expedition time " + Mathf.Max(0, Time.time-departedAt).ToString("0") + "s; new Heavy experience facts "
+                + Mathf.Max(0, character.State.ExperienceCount-experienceAtDeployment) + "; qualifying evasive exchanges "
+                + Mathf.Max(0, character.State.Exchanges-exchangesAtDeployment) + ". Experience reports observations, not automatic power.";
             actions.Interrupt("Expedition " + outcome);
             ResetToHub();
             guarded.gameObject.SetActive(false); fast.gameObject.SetActive(false);
             bool settled = Attempt.Settle(Attempt.Id, character.State);
             Report = "Attempt " + Attempt.Id.Substring(0, 8) + " / " + outcome + (settled ? " / settled" : " / settlement refused")
                 + (Attempt.PointAwarded ? ". First relay milestone: +1 development point. Choose Breaker or Momentum deliberately." : ". No development point: only first relay restoration pays; repeat contracts retain combat experience/discovery, not infinite currency.")
-                + " Save explicitly at the hub. Unsaved progress is lost when loading an older record or exiting.";
+                + experienceReport + " Save explicitly at the hub. Unsaved progress is lost when loading an older record or exiting.";
             OpenBoard(); return settled;
         }
         void Teleport(Vector3 destination)

@@ -36,6 +36,7 @@ Hub geometry is around x=55; the arena remains around x=0. Travel teleports the 
 - Fresh loop Warriors start with Baseline, zero fixture points and no inherited character knowledge, experience or talents. The first earned point explicitly buys either Breaker or Momentum. One Heavy discipline/no respec remains an experimental restriction.
 - Existing verified-evasion discovery and separate retaliation learning/activation are preserved. The once-only reveal fixture remains an additional point. No empty defensive talent or new owned modifier was added.
 - Defeat/abandon grants no completion point. Completed combat experience/discovery remains in memory across returns, without automatic save. The menu suspends player input, not world simulation.
+- The return report snapshots elapsed expedition time and newly demonstrated facts/qualifying exchanges before encounter reset changes session diagnostic text. This is presentation only: no bonus, automatic investment or additional reward rule.
 
 ## Persistence and recovery
 

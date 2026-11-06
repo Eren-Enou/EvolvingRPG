@@ -10,7 +10,11 @@ Updated AttackSnapshotChecks exercises actual ReceiveHit through production hand
 
 Changed: Assets/Game/Combat/CombatObservation.cs, CombatActions.cs and CombatActionReview.cs; Assets/Game/Editor/AttackSnapshotChecks.cs; docs/COMBAT_OBSERVATIONS.md, CHARACTER_DEVELOPMENT_PLAYGROUND.md and this report. Schema remains 2; saved character fields are unchanged. The phase field is optional for older synthetic observation constructors, defaulting to Ready; actual CombatActions observations supply the current phase.
 
-Next work in this continuation: a controlled native comparison of the same guarded exchange with fresh versus nearly broken player poise, using runtime-only fixtures. This will establish the instrumented distinction between landed/completed and landed/interrupted without granting a new talent or deciding the experience policy. Final fixture and integrated results will be recorded below.
+Next work in this continuation: a controlled native comparison of the same guarded exchange with fresh versus nearly broken player poise, using runtime-only fixtures. This will establish the instrumented distinction between landed/completed and landed/interrupted without granting a new talent or deciding the experience policy. The new native fixture passed both cases: each landed 9 guarded HP / 40 poise and received 18 HP / 20 poise in recovery. Fresh player poise completed; an explicit pre-acceptance 20-poise preload caused stagger and interruption. The completed contact recorded one fact; the interrupted trade recorded none. These are controlled setup results, not judgments of tactical value.
+
+The first inspection invocation completed combat but did not retain the panel visibly. The fixture now explicitly focuses Game view and verifies the panel remains open across subsequent runtime frames; the corrected inspection passed and both results were visually read together. The original presentation gap is recorded rather than counted as successful inspection. No production focus or control rule changed.
+
+Added Assets/Game/Editor/CombatTradeChecks.cs and .meta, plus its stage in ExtendedChecks.cs and docs/COMBAT_TRADE_LAB.md. The full runner now has thirteen stages; the new fixture passed independently, with the integrated thirteen-stage run pending further work. Commands: Run Combat Trade Checks (Ctrl+Shift+Alt+F8), Inspect Combat Trade Fixture (Ctrl+Shift+Alt+F9). Both are explicit commands, not import-time execution; neither writes personal saves.
 
 ---
 

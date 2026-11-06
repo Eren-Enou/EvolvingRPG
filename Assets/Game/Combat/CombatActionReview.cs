@@ -14,9 +14,14 @@ namespace EvolvingRPG.Combat
             public readonly bool Interrupted, Evolved, LinkedHit, Guarded, PoiseBroken;
             public readonly float Duration, PlannedAdvance, Displacement, Damage, Poise, MissRecovery, LinkedRecovery;
             public readonly MeleeMissReason MissReason;
+            public readonly int ReceivedHits;
+            public readonly float DamageTaken, PoiseTaken;
+            public readonly bool Staggered, Defeated;
+            public readonly CombatPhase? FirstImpactPhase;
             public Entry(int sequence, AttackSnapshot attack, string linkedOpponent, bool evolved, bool linkedHit,
                 bool interrupted, float duration, float displacement, int contacts, float damage, float poise,
-                bool guarded, bool broken, MeleeMissReason miss, float linkedRecovery)
+                bool guarded, bool broken, MeleeMissReason miss, float linkedRecovery,
+                int receivedHits, float damageTaken, float poiseTaken, bool staggered, bool defeated, CombatPhase? firstImpactPhase)
             {
                 Sequence = sequence; Name = attack.DisplayName; LinkedOpponent = linkedOpponent;
                 Evolved = evolved; LinkedHit = linkedHit; Interrupted = interrupted; Duration = duration;
@@ -25,9 +30,14 @@ namespace EvolvingRPG.Combat
                 // Interrupted actions never claim that their remaining recovery was paid.
                 MissRecovery = !interrupted && contacts == 0 ? attack.MissRecovery : 0;
                 LinkedRecovery = !interrupted ? linkedRecovery : 0;
+                ReceivedHits = receivedHits; DamageTaken = damageTaken; PoiseTaken = poiseTaken;
+                Staggered = staggered; Defeated = defeated; FirstImpactPhase = firstImpactPhase;
             }
             public string Summary => $"#{Sequence} {Name}: {(Interrupted ? "interrupted" : "completed")} in {Duration:0.00}s | {Contacts} contacts, {Damage:0.#} HP / {Poise:0.#} poise applied"
                 + (Guarded ? " | guarded" : "") + (PoiseBroken ? " | poise break" : "")
+                + $" | received {ReceivedHits} impacts: {DamageTaken:0.#} HP / {PoiseTaken:0.#} poise during commitment"
+                + (FirstImpactPhase.HasValue ? " (first in " + FirstImpactPhase.Value + ")" : "")
+                + (Staggered ? " | player staggered" : "") + (Defeated ? " | player defeated" : "")
                 + $" | committed advance {PlannedAdvance:0.00}m / net horizontal displacement {Displacement:0.00}m"
                 + (!Interrupted && Contacts == 0 ? " | miss: " + MeleeMissFeedback.Describe(MissReason) : "")
                 + (Evolved ? " | linked return " + (LinkedHit ? "landed" : "not satisfied") + " against " + LinkedOpponent : "")
@@ -43,6 +53,10 @@ namespace EvolvingRPG.Combat
         AttackSnapshot snapshot;
         AttackCommitment? context;
         string opponent;
+        int receivedHits;
+        float damageTaken, poiseTaken;
+        bool staggered, defeated;
+        CombatPhase? firstImpactPhase;
         public Entry Latest => history.Count == 0 ? null : history[history.Count - 1];
         public int Count => history.Count;
         public IEnumerable<Entry> NewestFirst { get { for (int i = history.Count - 1; i >= 0; i--) yield return history[i]; } }
@@ -59,9 +73,19 @@ namespace EvolvingRPG.Combat
                 pending = value.ActionSequence; snapshot = value.Attack.Value; context = actions.CommittedContext;
                 opponent = context.HasValue ? context.Value.Opportunity.Label : "";
                 started = value.Time; start = actor.position; contacts = 0; damage = poise = 0; linkedHit = guarded = broken = false;
+                receivedHits = 0; damageTaken = poiseTaken = 0; staggered = defeated = false; firstImpactPhase = null;
                 return;
             }
             if (pending != value.ActionSequence) return;
+            if (value.Kind == CombatObservationKind.ImpactReceived)
+            {
+                if (value.Resolution.DamageApplied <= 0 && value.Resolution.PoiseApplied <= 0
+                    && !value.Resolution.PoiseBroken && !value.Resolution.Defeated) return;
+                receivedHits++; damageTaken += value.Resolution.DamageApplied; poiseTaken += value.Resolution.PoiseApplied;
+                staggered |= value.Resolution.PoiseBroken; defeated |= value.Resolution.Defeated;
+                if (!firstImpactPhase.HasValue) firstImpactPhase = value.Phase;
+                return;
+            }
             if (value.Kind == CombatObservationKind.HitResolved)
             {
                 contacts++; damage += value.Resolution.DamageApplied; poise += value.Resolution.PoiseApplied;
@@ -75,7 +99,8 @@ namespace EvolvingRPG.Combat
             var entry = new Entry(pending, snapshot, opponent, context.HasValue, linkedSatisfied,
                 value.Kind == CombatObservationKind.Interrupted, Mathf.Max(0, value.Time - started),
                 Vector3.ProjectOnPlane(actor.position - start, Vector3.up).magnitude,
-                contacts, damage, poise, guarded, broken, value.MissReason, penalty);
+                contacts, damage, poise, guarded, broken, value.MissReason, penalty,
+                receivedHits, damageTaken, poiseTaken, staggered, defeated, firstImpactPhase);
             if (history.Count == 6) history.RemoveAt(0);
             history.Add(entry); pending = -1; context = null;
         }

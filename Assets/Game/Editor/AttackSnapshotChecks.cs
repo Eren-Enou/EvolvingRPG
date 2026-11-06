@@ -166,6 +166,7 @@ namespace EvolvingRPG.Editor
                 Require(review.Count == 6, "disposed review remained subscribed");
                 review.Clear(); Require(review.Count == 0 && review.Latest == null, "review clear retained character history");
                 Pass("Action review: actual impacts, immutable labels, interruption, miss reason, duplicate subscription, bounded history and disposal");
+                CheckTradeReview();
             }
             catch (Exception exception) { errors.Add(exception.ToString()); }
             finally
@@ -182,6 +183,64 @@ namespace EvolvingRPG.Editor
                 File.WriteAllText("Logs/AttackSnapshotChecks.txt", report);
                 Debug.Log(report);
                 EditorApplication.ExitPlaymode();
+            }
+        }
+
+        private static void CheckTradeReview()
+        {
+            var actor = new GameObject("Temporary trade-review actor"); actor.SetActive(false);
+            actor.transform.position = Vector3.right * 2000;
+            actor.AddComponent<StarterAssetsInputs>();
+            var motor = actor.AddComponent<ThirdPersonController>(); motor.enabled = false; motor.Grounded = true;
+            var vitality = actor.AddComponent<CombatVitality>();
+            var actions = actor.AddComponent<CombatActions>();
+            var definition = ScriptableObject.CreateInstance<AttackDefinition>();
+            definition.StaminaCost = 0; definition.Windup = definition.ActiveTime = definition.Recovery = 1;
+            var dummy = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            dummy.transform.position = actor.transform.position + new Vector3(0, 1, 1.5f); dummy.AddComponent<TrainingTarget>();
+            actor.SetActive(true); Physics.SyncTransforms();
+            using (var review = new CombatActionReview(actions, actor.transform))
+            {
+                review.Attach(); review.Attach(); // Actions' impact handler is deliberately subscribed first.
+                HitData Hit(float damage, float poise) => new HitData("Trade fixture", damage, poise, Color.red, actor.transform.position + Vector3.forward);
+                try
+                {
+                    Require(actions.TryAttack(definition), "trade action rejected");
+                    TickAt(actions, 1.1f);
+                    Require(vitality.ReceiveHit(Hit(7, 5), out _), "first trade impact rejected");
+                    TickAt(actions, 2.1f); Require(vitality.ReceiveHit(Hit(3, 4), out _), "recovery impact rejected");
+                    TickAt(actions, 3.1f); var completed = review.Latest;
+                    Require(completed != null && completed.Contacts == 1 && completed.Damage == definition.Damage
+                        && !completed.Interrupted && completed.ReceivedHits == 2 && completed.DamageTaken == 10
+                        && completed.PoiseTaken == 9 && completed.FirstImpactPhase == CombatPhase.Active && !completed.Staggered,
+                        "completed trade lost independent outgoing/incoming applied totals or phase");
+                    vitality.ReceiveHit(Hit(9, 1), out _);
+                    Require(review.Latest == completed && completed.DamageTaken == 10, "post-completion damage attributed to old action");
+                    vitality.ResetVitality(); Require(actions.TryAttack(definition), "stagger trade rejected");
+                    vitality.ReceiveHit(Hit(2, vitality.PoiseThreshold), out _);
+                    var interrupted = review.Latest; var records = actions.Diagnostics.Records;
+                    Require(interrupted.Interrupted && interrupted.ReceivedHits == 1 && interrupted.DamageTaken == 2
+                        && interrupted.PoiseTaken == vitality.PoiseThreshold && interrupted.Staggered && !interrupted.Defeated
+                        && interrupted.FirstImpactPhase == CombatPhase.Windup && interrupted.MissRecovery == 0
+                        && records[records.Count - 2].Kind == CombatObservationKind.ImpactReceived
+                        && records[records.Count - 1].Kind == CombatObservationKind.Interrupted,
+                        "stagger-causing hit arrived after synchronous interruption or claimed recovery completion");
+                    vitality.ResetVitality(); Require(actions.TryAttack(definition), "defeat trade rejected");
+                    vitality.ReceiveHit(Hit(999, 0), out _); var defeated = review.Latest;
+                    Require(defeated.Interrupted && defeated.Defeated && defeated.DamageTaken == vitality.MaximumHealth,
+                        "defeat review used authored overkill instead of applied health loss");
+                    vitality.ResetVitality(); Require(actions.TryDodge(), "trade dodge rejected");
+                    vitality.ReceiveHit(Hit(1, 1), out _); actions.Interrupt("trade dodge finished");
+                    Require(review.Latest == defeated, "dodge damage contaminated attack review");
+                    vitality.ResetVitality(); Require(actions.TryAttack(definition), "zero-impact fixture rejected");
+                    vitality.ReceiveHit(Hit(0, 0), out _); actions.Interrupt("zero-impact fixture");
+                    Require(review.Latest.ReceivedHits == 0 && review.Latest.DamageTaken == 0 && !review.Latest.FirstImpactPhase.HasValue,
+                        "zero applied impact reported a trade");
+                    Require(actions.Diagnostics.Hits == 1 && actions.Diagnostics.PoiseBreaks == 0,
+                        "received impacts counted as outgoing hits or inflicted breaks");
+                    Pass("Trade review: completed non-staggering trade, active/recovery exposure, incoming-before-interruption ordering, clamped lethal damage, post-completion/dodge/zero exclusion and outgoing-counter isolation");
+                }
+                finally { UnityEngine.Object.DestroyImmediate(actor); UnityEngine.Object.DestroyImmediate(dummy); UnityEngine.Object.DestroyImmediate(definition); }
             }
         }
 

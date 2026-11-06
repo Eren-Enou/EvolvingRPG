@@ -130,6 +130,8 @@ namespace EvolvingRPG.Combat
 
         private void OnImpact(HitData hit, HitResolution resolution)
         {
+            // Publish applied incoming impact before a synchronous interruption closes the review.
+            if (Busy) Observe(CombatObservationKind.ImpactReceived, vitality, resolution);
             if (resolution.PoiseBroken || resolution.Defeated) Interrupt(resolution.Defeated ? "Defeated - R resets" : "Staggered");
         }
 
@@ -246,7 +248,7 @@ namespace EvolvingRPG.Combat
                 dodging ? CombatActionKind.Dodge : CombatActionKind.Attack,
                 CurrentAttack, target, resolution, dodging ? 0 : hitTargets.Count,
                 HasCommittedAttack ? CommittedAttack : (AttackSnapshot?)null,
-                kind == CombatObservationKind.Completed && !dodging && hitTargets.Count == 0 ? missReason : MeleeMissReason.None);
+                kind == CombatObservationKind.Completed && !dodging && hitTargets.Count == 0 ? missReason : MeleeMissReason.None, Phase);
             Diagnostics.Record(observation);
             Observed?.Invoke(observation);
         }

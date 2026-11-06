@@ -63,3 +63,7 @@ Use **Run Heavy Experience Checks** (Ctrl+Shift+Alt+F7) for the isolated model a
 Heavy cards read the actual assigned base definitions for damage, poise, stamina, windup/active/recovery, miss recovery, reach/arc, committed windup advance and directional movement multiplier. Retaliatory Momentum's revealed card reads its current component travel/recovery settings. This is an authored base preview, not a prediction of actual guarded damage, collision-limited travel or an armed contextual return. Recent attacks remain the record of what was actually committed and resolved.
 
 Inspection takes a value snapshot without running attack resolvers or acceptance. It does not select a discipline, spend stamina/points, create an action or consume an opportunity. Unowned near-term disciplines can be inspected without granting them. A runtime-clone test verifies tuning changes appear in subsequent previews while previous snapshots remain unchanged; shared attack assets are not edited by the test. No save field or Editor wiring is added.
+
+## Inspect a trade
+
+Recent attacks now distinguish impact dealt from impact received while committed. Read the first incoming phase and player stagger/defeat alongside completion and the Heavy experience explanation. A completed attack with zero received damage is not labeled safe: danger after completion and the player's intent are not measured. R retains the review; fresh/load clear it. These fields are session-only and change no combat or experience rules.

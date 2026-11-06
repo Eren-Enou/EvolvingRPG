@@ -61,3 +61,13 @@ Run **Tools > EvolvingRPG > Run Combat Play Mode Checks** (Ctrl+Shift+F8), with 
 - Added this guide; updated `docs/COMBAT_SANDBOX.md`, `docs/PROGRESSION_DEVELOPMENT_PATH.md`, and `docs/MILESTONES.md` to describe the implementation.
 
 No scenes, prefabs, attack assets, movement scripts, vendor packages, or project version settings were intentionally edited for this slice. The user-provided talent charter is preserved.
+
+## Received impacts during commitment (2026-11-06)
+
+`ImpactReceived` is appended to the observation-kind enum. When a busy actor receives an applied hit, CombatActions publishes the actual HitResolution and current CombatPhase before any synchronous stagger/defeat interruption. Publishing from the action's existing impact handler avoids subscriber-order-dependent loss of the very hit that ends an attack. It does not change hit resolution, interruption, costs or timing.
+
+These receipts are incoming impact, not outgoing hits, misses, inflicted poise breaks or experience candidates. Outgoing diagnostic counters are unchanged. Ready-state hits do not belong to an old action. Dodge impacts can appear in diagnostics but do not replace the attack-only review. A zero-applied-impact receipt does not increment the review's received-impact count.
+
+DevelopmentTest's Recent attacks retains independent applied damage/poise dealt and received, number of received impacts, phase of first impact, and player stagger/defeat. The interval is acceptance through completion/interruption only. It does not measure later exposure, damage after control returns, intent, enemy damage prevented, exchange efficiency or whether a trade was worth taking. An interrupted trade may be tactically useful while still failing the current experimental full-recovery experience rule. No eligibility or reward policy reads this presentation.
+
+The snapshot suite tests actual CombatVitality.ReceiveHit and CombatActions events, including non-staggering completed trades, active/recovery damage, the stagger-causing receipt preceding interruption, clamped lethal damage, post-completion/dodge/zero exclusion and separation from outgoing counters. Fixtures use temporary objects and no authored asset edits.

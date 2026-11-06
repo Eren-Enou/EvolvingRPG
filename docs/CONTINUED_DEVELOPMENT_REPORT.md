@@ -1,5 +1,19 @@
 # Continued development report — 2026-11-05
 
+## Current continuation - observable combat trades (2026-11-06)
+
+Started clean at `90cd558` on development/verified-character-depth; continuing on development/combat-trade-lab. Existing Unity 6000.6.7f1 was stopped on saved DevelopmentTest. No second Editor or scene/prefab/attack-asset edit was used.
+
+First implemented slice: incoming applied damage/poise during an accepted attack is now observable in Recent attacks, alongside independent outgoing totals. The first incoming phase and player stagger/defeat are retained. CombatActions publishes ImpactReceived before synchronous interruption, so subscriber order cannot omit the stagger-causing hit. Existing costs, timing, damage, dodge and experience eligibility are unchanged. No received event is counted as an outgoing hit or experience candidate. Session fields are never saved and do not infer whether a trade was tactically worthwhile.
+
+Updated AttackSnapshotChecks exercises actual ReceiveHit through production handlers: completed non-staggering trade, active/recovery exposure, receipt-before-interruption ordering, clamped lethal loss, immutable completed review, and post-completion/dodge/zero-impact exclusions. The full twelve-stage regression run started 2026-11-06T16:50:18Z and passed all stages with no failed/skipped suite. New checks executed successfully; no Unity compiler errors observed. Existing deprecated lookup warnings remain. This is a technical result, not physical-player or balance validation.
+
+Changed: Assets/Game/Combat/CombatObservation.cs, CombatActions.cs and CombatActionReview.cs; Assets/Game/Editor/AttackSnapshotChecks.cs; docs/COMBAT_OBSERVATIONS.md, CHARACTER_DEVELOPMENT_PLAYGROUND.md and this report. Schema remains 2; saved character fields are unchanged. The phase field is optional for older synthetic observation constructors, defaulting to Ready; actual CombatActions observations supply the current phase.
+
+Next work in this continuation: a controlled native comparison of the same guarded exchange with fresh versus nearly broken player poise, using runtime-only fixtures. This will establish the instrumented distinction between landed/completed and landed/interrupted without granting a new talent or deciding the experience policy. Final fixture and integrated results will be recorded below.
+
+---
+
 ## Current follow-up - verified integration and inspectable experience (2026-11-06)
 
 Started clean at `b1485d9`; branch `development/verified-character-depth`. User authorization supersedes the earlier offline-only restriction. No Unity process was running, so the installed, project-configured Unity 6000.6.7f1 was launched for this project. No second instance, batch mode, unsaved scene overwrite or personal-save access was used.

@@ -82,3 +82,15 @@ Movement/camera code, prior scene files, player/variant attack assets, CombatSta
 With scenes saved and Play mode stopped, choose **Tools > EvolvingRPG > Run Practice Play Mode Checks**. The six isolated groups test rejection/duplicate/reset rules, pre-impact phase capture, completion/interruption, threshold/effect isolation, and disabled-resolver fallback. A normal-frame check then waits for an opponent windup, lands Breaker, finishes recovery, checks the bounded two-point result, and resets the trial. Reports go to ignored `Logs/PracticePlayModeChecks.txt`.
 
 Validation completed in Unity 6000.6.7f1: all six isolated practice groups and the normal-frame practice check passed. Regression checks also passed: 26 baseline combat checks, six isolated technique groups plus three native-motor checks, 11 isolated opponent groups plus a live check, and eight snapshot groups. No runtime errors were captured by these checks. Reports are in the ignored `Logs` directory. Functional checks do not establish mastery feel, fairness, or balance; those require player testing.
+
+## Retained action review (2026-11-06)
+
+PracticeTest now offers F7 to show/hide a six-attack session review. F1 hides opponent details to provide more room; Escape releases the cursor for scrolling. This is a diagnostic overlay, not a pause or safe-development menu: the world continues. Closing F7 does not change action input, trial state or earned practice. No new button is required to fight.
+
+Each completed/interrupted attack retains its actual committed base recovery, applied outgoing impact, incoming impact while committed, first received phase and completion state. The base recovery is the accepted snapshot, including the existing optional F2 trial if eligible; later F2 changes cannot rewrite the earlier record. It is labeled committed, not time already paid after an interruption.
+
+R still clears practice points, consumed-threat budgets, practice decision history and the trial toggle. The separate presentation review survives R so an off/on comparison can be inspected afterward. F6 still clears only raw combat diagnostics. Review entries cannot give points, re-open a consumed threat or affect resolution, and nothing is saved. Leaving Play starts a new review.
+
+Tools > EvolvingRPG > Inspect Practice Review Fixture (Ctrl+Shift+Alt+F10) runs the existing practice checks and one real Breaker guard interruption, resets the encounter, then leaves its retained review visible. It hides opponent details and releases the cursor; stop Play when finished. The two F2 model snapshots are explicit production actions; synthetic setup evidence used by the older isolated eligibility checks is not labeled player playtesting.
+
+For a human comparison, earn the existing trial normally, use a matched starting context, alternate F2 off/on and inspect committed base recovery plus actual contact, incoming impact and return to control. Keep miss recovery separate. An 8% change is a prototype treatment, not an accepted owned talent or an automatically meaningful benefit.

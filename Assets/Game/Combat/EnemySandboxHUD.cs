@@ -12,6 +12,11 @@ namespace EvolvingRPG.Combat
         private readonly InputAction reset = new InputAction("ResetEncounter", InputActionType.Button, "<Keyboard>/r");
         private readonly InputAction clear = new InputAction("ClearObservations", InputActionType.Button, "<Keyboard>/f6");
         private readonly InputAction details = new InputAction("OpponentDetails", InputActionType.Button, "<Keyboard>/f1");
+        private readonly InputAction review = new InputAction("PracticeReview", InputActionType.Button, "<Keyboard>/f7");
+        public CombatActionReview PracticeReview { get; private set; }
+        private bool showReview;
+        private Vector2 reviewScroll;
+        public void SetPracticeReviewVisible(bool visible) => showReview = visible;
         private HeavyTechniqueSelector techniques;
         private HeavyPractice practice;
         private CombatVitality vitality;
@@ -24,13 +29,14 @@ namespace EvolvingRPG.Combat
         public void SetInterfaceVisible(bool visible) => showInterface = visible;
         public void Configure(CombatActions actor, SandboxEnemy[] opponents) { player = actor; enemies = opponents; }
         public void SetOpponentDetails(bool visible) => showOpponentDetails = visible;
-        private void OnEnable() { reset.Enable(); clear.Enable(); details.Enable(); }
-        private void OnDisable() { reset.Disable(); clear.Disable(); details.Disable(); }
+        private void OnEnable() { reset.Enable(); clear.Enable(); details.Enable(); review.Enable(); PracticeReview?.Attach(); }
+        private void OnDisable() { reset.Disable(); clear.Disable(); details.Disable(); review.Disable(); PracticeReview?.Dispose(); }
         private void Start()
         {
             vitality = player.GetComponent<CombatVitality>(); stamina = player.GetComponent<CombatStamina>();
             techniques = player.GetComponent<HeavyTechniqueSelector>();
             practice = player.GetComponent<HeavyPractice>();
+            if (practice != null) { PracticeReview = new CombatActionReview(player, player.transform); PracticeReview.Attach(); }
             spawn = player.transform.position; facing = player.transform.rotation;
         }
         private void Update()
@@ -39,6 +45,7 @@ namespace EvolvingRPG.Combat
             if (reset.WasPressedThisFrame()) ResetEncounter();
             if (clear.WasPressedThisFrame()) player.Diagnostics.Clear();
             if (details.WasPressedThisFrame()) showOpponentDetails = !showOpponentDetails;
+            if (practice != null && review.WasPressedThisFrame()) showReview = !showReview;
         }
         public void ResetEncounter()
         {
@@ -76,9 +83,26 @@ namespace EvolvingRPG.Combat
             }
             if (showOpponentDetails) GUILayout.Label("Approach one lane at a time. No dodge invulnerability.", text);
             GUILayout.EndArea();
-            GUILayout.BeginArea(new Rect(12, Mathf.Max(panelHeight + 25, Screen.height - 85), width, 75), GUI.skin.box);
+            bool inspectReview = practice != null && showReview;
+            float lowerY = inspectReview ? Mathf.Min(panelHeight + 25, Mathf.Max(12, Screen.height - 140)) : Mathf.Max(panelHeight + 25, Screen.height - 85);
+            float lowerHeight = inspectReview ? Mathf.Max(90, Screen.height - lowerY - 12) : 75;
+            if (inspectReview)
+            {
+                var color = GUI.color; GUI.color = new Color(.07f, .09f, .12f, 1);
+                GUI.DrawTexture(new Rect(12, lowerY, width, lowerHeight), Texture2D.whiteTexture); GUI.color = color;
+            }
+            GUILayout.BeginArea(new Rect(12, lowerY, width, lowerHeight), GUI.skin.box);
             GUILayout.Label(practice != null ? "Session-only practice / R starts fresh / no unlocks or saves" : "Encounter diagnostics only / no mastery or unlocks / Escape releases cursor", text);
-            GUILayout.Label(practice != null ? practice.Latest : player.Diagnostics.Latest, text);
+            if (inspectReview)
+            {
+                GUILayout.Label("RECENT ATTACKS / F7 closes / F1 hides details for more room / Escape releases cursor to scroll. World continues.", text);
+                reviewScroll = GUILayout.BeginScrollView(reviewScroll);
+                if (PracticeReview.Count == 0) GUILayout.Label("No completed or interrupted attacks yet.", text);
+                foreach (var entry in PracticeReview.NewestFirst) GUILayout.Label(entry.Summary, text);
+                GUILayout.Label("R resets practice points/trial but retains this session review. Received impact covers commitment only; zero does not establish safety.", text);
+                GUILayout.EndScrollView();
+            }
+            else GUILayout.Label(practice != null ? practice.Latest + " | F7 recent attacks" : player.Diagnostics.Latest, text);
             GUILayout.EndArea();
         }
     }

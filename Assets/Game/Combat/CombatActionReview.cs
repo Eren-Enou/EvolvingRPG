@@ -18,6 +18,7 @@ namespace EvolvingRPG.Combat
             public readonly float DamageTaken, PoiseTaken;
             public readonly bool Staggered, Defeated;
             public readonly CombatPhase? FirstImpactPhase;
+            public readonly float BaseRecovery;
             public Entry(int sequence, AttackSnapshot attack, string linkedOpponent, bool evolved, bool linkedHit,
                 bool interrupted, float duration, float displacement, int contacts, float damage, float poise,
                 bool guarded, bool broken, MeleeMissReason miss, float linkedRecovery,
@@ -32,12 +33,14 @@ namespace EvolvingRPG.Combat
                 LinkedRecovery = !interrupted ? linkedRecovery : 0;
                 ReceivedHits = receivedHits; DamageTaken = damageTaken; PoiseTaken = poiseTaken;
                 Staggered = staggered; Defeated = defeated; FirstImpactPhase = firstImpactPhase;
+                BaseRecovery = attack.Recovery;
             }
             public string Summary => $"#{Sequence} {Name}: {(Interrupted ? "interrupted" : "completed")} in {Duration:0.00}s | {Contacts} contacts, {Damage:0.#} HP / {Poise:0.#} poise applied"
                 + (Guarded ? " | guarded" : "") + (PoiseBroken ? " | poise break" : "")
                 + $" | received {ReceivedHits} impacts: {DamageTaken:0.#} HP / {PoiseTaken:0.#} poise during commitment"
                 + (FirstImpactPhase.HasValue ? " (first in " + FirstImpactPhase.Value + ")" : "")
                 + (Staggered ? " | player staggered" : "") + (Defeated ? " | player defeated" : "")
+                + $" | committed base recovery {BaseRecovery:0.000}s"
                 + $" | committed advance {PlannedAdvance:0.00}m / net horizontal displacement {Displacement:0.00}m"
                 + (!Interrupted && Contacts == 0 ? " | miss: " + MeleeMissFeedback.Describe(MissReason) : "")
                 + (Evolved ? " | linked return " + (LinkedHit ? "landed" : "not satisfied") + " against " + LinkedOpponent : "")

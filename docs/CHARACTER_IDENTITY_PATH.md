@@ -18,6 +18,8 @@ The current history set is the smallest durable bridge. Its presence also spends
 
 **Current preparation (2026-11-06):** the current twelve-stage Unity regression gate passed, and DevelopmentTest provides sequence-linked Heavy experience explanations retained across R. Technique cards read current base attack definitions, while Recent attacks show the committed result. Use these together to compare intention, commitment, applied outcome and experience policy; neither display infers the player's tactical intent or grants power. These are tools for the same three experiments below, not evidence that a refinement is accepted.
 
+**Further preparation:** CombatTradeChecks now compares two real Baseline trades with different initial poise. Recent attacks retain incoming applied impact and first impact phase, without rating the decision. PracticeTest's F7 review retains committed base recovery and impact evidence across R for the existing F2 comparison. See COMBAT_TRADE_LAB.md and HEAVY_PRACTICE_EXPERIMENT.md; the same three design questions remain, with no new owned power selected.
+
 ## 1. Does experience describe competent play fairly?
 
 **Decision:** create an opening with an early Heavy, wait to intercept, or choose Light/movement when Heavy is unsafe. The record should describe what actually happened without encouraging a player to wait for an enemy attack solely to earn progress.

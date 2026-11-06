@@ -19,12 +19,16 @@ namespace EvolvingRPG.Editor
         private static readonly List<string> results = new List<string>();
         static PracticePlayModeChecks() => EditorApplication.playModeStateChanged += ModeChanged;
         [MenuItem("Tools/EvolvingRPG/Run Practice Play Mode Checks")]
-        public static void Run()
+        public static void Run() => RunMode(false);
+        [MenuItem("Tools/EvolvingRPG/Inspect Practice Review Fixture %#&F10")]
+        public static void InspectReview() => RunMode(true);
+        private static void RunMode(bool inspect)
         {
             if (EditorApplication.isPlayingOrWillChangePlaymode) throw new InvalidOperationException("Exit Play mode first.");
             for (int i = 0; i < SceneManager.sceneCount; i++) if (SceneManager.GetSceneAt(i).isDirty) throw new InvalidOperationException("Save scene edits first.");
             if (!File.Exists(PracticeSandboxBuilder.ScenePath)) PracticeSandboxBuilder.Create();
             EditorSceneManager.OpenScene(PracticeSandboxBuilder.ScenePath);
+            SessionState.SetBool("EvolvingRPG.PracticeReviewInspect", inspect);
             SessionState.SetBool(Requested, true); EditorApplication.EnterPlaymode();
         }
         private static void ModeChanged(PlayModeStateChange state)
@@ -36,10 +40,12 @@ namespace EvolvingRPG.Editor
             { if (type == LogType.Error || type == LogType.Exception || type == LogType.Assert) errors.Add(message + "\n" + stack); };
             Application.logMessageReceived += capture;
             CombatActions actor = null; GameObject dummy = null;
+            CombatActionReview snapshotReview = null;
             Vector3 originalPosition = default; Quaternion originalFacing = Quaternion.identity;
             try
             {
                 actor = Find<CombatActions>(); originalPosition = actor.transform.position; originalFacing = actor.transform.rotation;
+                snapshotReview = new CombatActionReview(actor, actor.transform); snapshotReview.Attach();
                 var practice = actor.GetComponent<HeavyPractice>(); var player = actor.GetComponent<CombatVitality>();
                 var selector = actor.GetComponent<HeavyTechniqueSelector>();
                 var heavy = actor.HeavyAttack; var light = actor.LightAttack; var guard = Guard(); var enemy = guard.GetComponent<EnemyVitality>();
@@ -103,7 +109,9 @@ namespace EvolvingRPG.Editor
                 Require(actor.TryAttack(heavy), "could not start authored Heavy");
                 Require(Near(actor.CommittedAttack.Recovery, heavy.Recovery), "trial applied while off");
                 practice.ToggleTrial(); Require(Near(actor.CommittedAttack.Recovery, heavy.Recovery), "toggle rewrote committed attack");
-                actor.Interrupt("next snapshot"); Require(actor.TryAttack(heavy), "could not start resolved Heavy");
+                actor.Interrupt("next snapshot");
+                Require(Near(snapshotReview.Latest.BaseRecovery, heavy.Recovery), "review rewrote pre-toggle committed recovery");
+                Require(actor.TryAttack(heavy), "could not start resolved Heavy");
                 Require(Near(actor.CommittedAttack.Recovery, heavy.Recovery * 0.92f) && Near(heavy.Recovery, 0.65f), "per-actor trial or asset isolation failed");
                 Require(Near(practice.Resolve(light, new AttackSnapshot(light)).Recovery, light.Recovery), "trial affected Light");
                 selector.TrySelect(2); // Busy selection remains rejected; get the authored definition directly for resolution testing.
@@ -111,7 +119,9 @@ namespace EvolvingRPG.Editor
                 var resolved = practice.Resolve(momentum, new AttackSnapshot(momentum));
                 Require(Near(resolved.MissRecovery, 0.55f) && Near(resolved.AdvanceDistance, 1.2f) && Near(resolved.StaminaCost, 20),
                     "proficiency changed miss tradeoff, advance or stamina");
-                actor.Interrupt("disable trial component"); practice.enabled = false;
+                actor.Interrupt("disable trial component");
+                Require(Near(snapshotReview.Latest.BaseRecovery, heavy.Recovery * .92f), "review did not retain resolved trial recovery");
+                practice.enabled = false;
                 Require(actor.TryAttack(heavy) && Near(actor.CommittedAttack.Recovery, heavy.Recovery), "disabled resolver still applied effect");
                 actor.Interrupt("fixture done"); practice.enabled = true;
                 Pass("Threshold and optional bounded recovery trial; snapshot isolation, untouched assets/Light/stamina/miss drawback, disabled-resolver fallback");
@@ -119,6 +129,7 @@ namespace EvolvingRPG.Editor
             catch (Exception exception) { errors.Add(exception.ToString()); }
             finally
             {
+                snapshotReview?.Dispose();
                 if (dummy != null) UnityEngine.Object.DestroyImmediate(dummy);
                 if (actor != null) { actor.Interrupt("checks finished"); Teleport(actor, originalPosition, originalFacing); }
                 Application.logMessageReceived -= capture; Directory.CreateDirectory("Logs");
@@ -132,7 +143,7 @@ namespace EvolvingRPG.Editor
         {
             var practice = actor.GetComponent<HeavyPractice>(); var selector = actor.GetComponent<HeavyTechniqueSelector>();
             var hud = Find<EnemySandboxHUD>(); var guard = Guard();
-            bool prepared = false, attacked = false, background = Application.runInBackground;
+            bool prepared = false, attacked = false, background = Application.runInBackground, failed = false;
             int firstFrame = Time.frameCount; double deadline = EditorApplication.timeSinceStartup + 45;
             var errors = new List<string>(); Application.LogCallback capture = (message, stack, type) =>
             { if (type == LogType.Error || type == LogType.Exception || type == LogType.Assert) errors.Add(message + "\n" + stack); };
@@ -158,13 +169,27 @@ namespace EvolvingRPG.Editor
                     if (actor.Busy) return;
                     Require(practice.Points == 2 && practice.GuardBreaks == 1 && practice.WindupInterrupts == 1,
                         "real hit/completion did not yield bounded contextual credit: " + practice.Latest);
+                    var entry = hud.PracticeReview?.Latest;
+                    Require(entry != null && !entry.Interrupted && entry.PoiseBroken && entry.Contacts > 0
+                        && Near(entry.BaseRecovery, actor.HeavyAttack.Recovery), "Practice HUD lost actual native attack commitment");
                     hud.ResetEncounter(); Require(practice.Points == 0 && !practice.TrialEnabled, "live reset did not clear practice");
+                    Require(hud.PracticeReview.Latest == entry && hud.PracticeReview.Count <= 6, "practice reset erased review or history unbounded");
+                    hud.enabled = false; hud.enabled = true;
+                    Require(hud.PracticeReview.Latest == entry, "HUD disable/re-enable erased completed evidence");
+                    if (SessionState.GetBool("EvolvingRPG.PracticeReviewInspect", false))
+                    {
+                        hud.SetOpponentDetails(false); hud.SetPracticeReviewVisible(true);
+                        EditorWindow.GetWindow(typeof(EditorWindow).Assembly.GetType("UnityEditor.GameView")).Focus();
+                        Cursor.lockState = CursorLockMode.None; Cursor.visible = true;
+                    }
                     if (errors.Count > 0) throw new InvalidOperationException(string.Join("\n", errors));
-                    File.AppendAllText("Logs/PracticePlayModeChecks.txt", "\nPASS Live native action: enemy commits, Breaker interrupts windup, recovery completes, two points awarded, R reset clears trial\nPASS: live practice; no runtime Console errors captured.\n");
+                    File.AppendAllText("Logs/PracticePlayModeChecks.txt", "\nPASS Live native action: enemy commits, Breaker interrupts windup, recovery completes, two points awarded, R reset clears trial; HUD review retains actual commitment across reset/disable\nPASS: live practice; no runtime Console errors captured.\n");
                 }
-                catch (Exception exception) { File.AppendAllText("Logs/PracticePlayModeChecks.txt", "\nFAIL Live practice: " + exception + "\n"); }
+                catch (Exception exception) { failed = true; File.AppendAllText("Logs/PracticePlayModeChecks.txt", "\nFAIL Live practice: " + exception + "\n"); }
                 Application.logMessageReceived -= capture; EditorApplication.update -= tick;
-                Application.runInBackground = background; EditorApplication.ExitPlaymode();
+                Application.runInBackground = background;
+                if (failed || !SessionState.GetBool("EvolvingRPG.PracticeReviewInspect", false)) EditorApplication.ExitPlaymode();
+                else Debug.Log("Practice review fixture passed. World continues; stop Play when finished. No saves written.");
             };
             EditorApplication.update += tick;
         }

@@ -66,6 +66,8 @@ Manual checks still required: normal full hub/mission/return cycle; movement/str
 
 Ordinary Editor Play rendered the initial hub HUD and station visuals; Editor was left stopped on RelayOutpost. Automation-generated Tab presses did not visibly open the menu in the brief Editor/player observations; the cause is not established. The focused native Input System Tab/F checks passed. Confirm physical Tab/F during player testing before treating ordinary keyboard/menu acceptance as established; do not infer a gameplay defect or change the controller solely from injected OS-key behavior. The startup smoke did not save or load any personal character records.
 
+On the next inspection, Windows Security displayed a Firewall permission prompt for evolvingrpg.exe over the stopped Editor. It was left untouched; security permission dialogs require the user's manual action under the computer-use skill. This is a separate observed obstruction to further UI testing, not proof of the cause of the earlier input observations. No firewall rules or Windows security settings were changed. Dismiss the prompt manually before resuming ordinary UI/input checks; the prototype implements no multiplayer.
+
 ## File changes
 
 - New `Assets/Game/Expeditions/ExpeditionAttempt.cs`, `ExpeditionLoop.cs`, `ExpeditionSign.cs` and metadata: lifecycle/settlement, runtime interactions/return/report/camera warp, placeholder labels.

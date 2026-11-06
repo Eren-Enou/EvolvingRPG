@@ -13,6 +13,13 @@ namespace EvolvingRPG.Progression
         public int primaryPaid, retaliationPaid, exchanges, grantedPoints, pointBalance;
         public bool retaliationLearned, retaliationActive;
         public string[] heavyExperience;
+        public int initialPoints;
+        public bool relayMilestone;
+        internal CharacterSaveData UpgradeMissionEconomy()
+        {
+            var upgraded = (CharacterSaveData)MemberwiseClone();
+            upgraded.schemaVersion = 3; upgraded.initialPoints = 1; upgraded.relayMilestone = false; return upgraded;
+        }
         internal CharacterSaveData UpgradeLegacyExperience()
         {
             var upgraded = (CharacterSaveData)MemberwiseClone();

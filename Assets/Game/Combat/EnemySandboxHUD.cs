@@ -26,6 +26,7 @@ namespace EvolvingRPG.Combat
         private GUIStyle text;
         [SerializeField] private bool showInterface = true;
         public bool InterfaceVisible => showInterface;
+        public bool AllowEncounterReset { get; set; } = true;
         public void SetInterfaceVisible(bool visible) => showInterface = visible;
         public void Configure(CombatActions actor, SandboxEnemy[] opponents) { player = actor; enemies = opponents; }
         public void SetOpponentDetails(bool visible) => showOpponentDetails = visible;
@@ -42,7 +43,7 @@ namespace EvolvingRPG.Combat
         private void Update()
         {
             if (!Application.isFocused || Cursor.lockState != CursorLockMode.Locked) return;
-            if (reset.WasPressedThisFrame()) ResetEncounter();
+            if (AllowEncounterReset && reset.WasPressedThisFrame()) ResetEncounter();
             if (clear.WasPressedThisFrame()) player.Diagnostics.Clear();
             if (details.WasPressedThisFrame()) showOpponentDetails = !showOpponentDetails;
             if (practice != null && review.WasPressedThisFrame()) showReview = !showReview;

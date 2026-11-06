@@ -20,6 +20,8 @@ namespace EvolvingRPG.Progression
         void Draw()
         {
             if (character == null || character.State == null) return;
+            var expedition = character.GetComponent<EvolvingRPG.Expeditions.ExpeditionLoop>();
+            if (expedition != null && (!character.MenuOpen || expedition.BoardOpen)) return;
             var state = character.State;
             if (observedCharacter != state.CharacterId)
             {
@@ -43,7 +45,7 @@ namespace EvolvingRPG.Progression
             GUI.DrawTexture(new Rect(12, 12, Mathf.Min(760, Screen.width - 24), Screen.height - 30), Texture2D.whiteTexture);
             GUI.color = previousColor;
             GUILayout.BeginArea(new Rect(12, 12, Mathf.Min(760, Screen.width - 24), Screen.height - 30), GUI.skin.box);
-            GUILayout.Label("OWNED CHARACTER / experimental specialization / Tab inspect at spawn / R encounter reset");
+            GUILayout.Label(expedition != null ? "OWNED WARRIOR / Tab closes / return to the mission board to deploy" : "OWNED CHARACTER / experimental specialization / Tab inspect at spawn / R encounter reset");
             GUILayout.Label($"Character {state.CharacterId.Substring(0, 8)} | points {state.Balance}/{state.Granted} granted | selected {DevelopmentIds.Label(state.Heavy)}");
             GUILayout.Label($"{actions.Phase} | {actions.Message} | HP {character.GetComponent<CombatVitality>().Health:0} | stamina {character.GetComponent<CombatStamina>().Current:0}");
             GUILayout.Label("Knowledge: " + state.Knowledge + " | qualifying exchanges " + state.Exchanges + "/3 | learned return: " + state.RetaliationLearned + " | active: " + state.RetaliationActive);
@@ -61,9 +63,9 @@ namespace EvolvingRPG.Progression
                 if (GUILayout.Button("Cancel save")) saveSlot = null;
             }
             scroll = GUILayout.BeginScrollView(scroll);
-            GUILayout.Label("CHARACTER EXPERIENCE / retained facts, not XP or power. " + state.ExperienceCount + " demonstrated. Save explicitly; R retains completed facts.");
+            GUILayout.Label("CHARACTER EXPERIENCE / retained facts, not XP or power. " + state.ExperienceCount + " demonstrated. Save explicitly; encounter resets retain completed facts.");
             GUILayout.Label(character.Experience.Latest);
-            GUILayout.Label("Prototype rule: one Heavy discipline per character; no respec. One point initially; one additional, once-only fixture point on reveal. Compare another fresh character. Not a final economy.");
+            GUILayout.Label("Prototype rule: one Heavy discipline per character; no respec. Initial fixture points: " + state.InitialPoints + ". First relay completion: one point once per character. Reveal: one additional fixture point. No automatic investment. Not a final economy.");
             GUILayout.Label("Technique numbers describe base attacks. Contextual return is separate; guard and collision can change results. Recent attacks show the form actually committed.");
             Card(DevelopmentIds.Baseline, "Baseline Heavy: the shared starting technique; remains learned after specializing.");
             Card(DevelopmentIds.Breaker, "Breaker: planted disruption with longer exposure. Compare poise and commitment below. Purchase selects this Heavy.");
@@ -86,8 +88,8 @@ namespace EvolvingRPG.Progression
             if (state.HasUnresolvedContent) GUILayout.Label(state.ContentWarning);
             GUILayout.Label("Journal: invested Momentum + verified evasion + successful same-opponent Momentum within 1.5 s of dodge recovery + full Heavy recovery. Three distinct strikes reveal; no empty defensive talent is sold.");
             foreach (var entry in character.GetComponent<ContextualDiscovery>().Ledger.Journal) GUILayout.Label(entry);
-            GUILayout.Label("Recent attacks / session review only / retained across R; cleared by character creation or load. No mastery or rewards.");
-            if (character.Review.Count == 0) GUILayout.Label("No completed or interrupted attacks yet. Fight, then R and Tab to inspect.");
+            GUILayout.Label("Recent attacks / session review only / retained across encounter resets; cleared by character creation or load. No mastery or rewards.");
+            if (character.Review.Count == 0) GUILayout.Label("No completed or interrupted attacks yet. Fight, then return to the hub or safe spawn to inspect.");
             foreach (var entry in character.Review.NewestFirst)
             {
                 GUILayout.Label(entry.Summary);

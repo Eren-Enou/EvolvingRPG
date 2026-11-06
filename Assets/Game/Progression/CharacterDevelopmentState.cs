@@ -34,9 +34,21 @@ namespace EvolvingRPG.Progression
         public bool RetaliationLearned { get; private set; }
         public bool RetaliationActive { get; private set; }
         public int Exchanges { get; private set; }
+        public int InitialPoints { get; private set; }
+        public bool RelayMilestone { get; private set; }
+        public CharacterDevelopmentState(int initialPoints = 1)
+        {
+            if (initialPoints < 0 || initialPoints > 1) throw new ArgumentOutOfRangeException(nameof(initialPoints));
+            InitialPoints = initialPoints;
+        }
+        public bool GrantRelayMilestone()
+        {
+            if (HasUnresolvedContent || RelayMilestone) return false;
+            RelayMilestone = true; Revision++; return true;
+        }
         public DiscoveryKnowledge Knowledge => Exchanges >= 3 ? DiscoveryKnowledge.Revealed : Exchanges > 0 ? DiscoveryKnowledge.Foreshadowed : DiscoveryKnowledge.Undiscovered;
         // Once per character: one initial choice, plus one evolution fixture grant on reveal.
-        public int Granted => 1 + (Knowledge == DiscoveryKnowledge.Revealed ? 1 : 0);
+        public int Granted => InitialPoints + (RelayMilestone ? 1 : 0) + (Knowledge == DiscoveryKnowledge.Revealed ? 1 : 0);
         public int Balance => Granted - (Primary.Length > 0 ? 1 : 0) - (RetaliationLearned ? 1 : 0);
         public bool HasUnresolvedContent { get; private set; }
         public string ContentWarning { get; private set; } = "";
@@ -106,7 +118,7 @@ namespace EvolvingRPG.Progression
         }
         public CharacterSaveData Export() => new CharacterSaveData
         {
-            schemaVersion = 2, heavyExperience = ExperienceFacts, discoveryId = DevelopmentIds.Retaliation, characterId = CharacterId, revision = Revision, buildRevision = BuildRevision,
+            schemaVersion = 3, initialPoints = InitialPoints, relayMilestone = RelayMilestone, heavyExperience = ExperienceFacts, discoveryId = DevelopmentIds.Retaliation, characterId = CharacterId, revision = Revision, buildRevision = BuildRevision,
             primary = Primary, heavy = retainedHeavy ?? Heavy, primaryPaid = Primary.Length > 0 ? 1 : 0,
             retaliationPaid = RetaliationLearned ? 1 : 0, exchanges = Exchanges,
             grantedPoints = Granted, pointBalance = Balance, retaliationLearned = RetaliationLearned, retaliationActive = RetaliationActive
@@ -114,22 +126,25 @@ namespace EvolvingRPG.Progression
         public static bool TryRestore(CharacterSaveData data, out CharacterDevelopmentState state, out string message)
         {
             state = null; message = "Invalid or inconsistent character save; original preserved.";
-            bool migrated = data != null && data.schemaVersion == 1;
-            if (migrated)
+            int originalSchema = data?.schemaVersion ?? 0;
+            bool migrated = data != null && (data.schemaVersion == 1 || data.schemaVersion == 2);
+            if (migrated && (data.initialPoints != 0 || data.relayMilestone)) return false;
+            if (data != null && data.schemaVersion == 1)
             {
                 if (data.heavyExperience != null && data.heavyExperience.Length != 0) return false;
                 data = data.UpgradeLegacyExperience(); // Copy; never mutate a caller's original record.
             }
-            if (data == null || data.schemaVersion != 2 || !Guid.TryParseExact(data.characterId, "N", out _)
+            if (data != null && data.schemaVersion == 2) data = data.UpgradeMissionEconomy();
+            if (data == null || data.schemaVersion != 3 || !Guid.TryParseExact(data.characterId, "N", out _)
                 || data.revision < 0 || data.revision > int.MaxValue - 100 || data.buildRevision < 0 || data.buildRevision > data.revision
-                || data.exchanges < 0 || data.exchanges > 3 || data.primary == null || data.heavy == null
+                || data.exchanges < 0 || data.exchanges > 3 || data.initialPoints < 0 || data.initialPoints > 1 || data.primary == null || data.heavy == null
                 || data.primary.Length > 128 || data.heavy.Length > 128 || data.discoveryId != DevelopmentIds.Retaliation) return false;
             bool primaryKnown = data.primary.Length == 0 || DevelopmentIds.IsPrimary(data.primary);
             bool heavyKnown = data.heavy == DevelopmentIds.Baseline || DevelopmentIds.IsPrimary(data.heavy);
             if (!HeavyExperienceCatalog.Validate(data.heavyExperience, data.primary, primaryKnown)) return false;
             if (data.primary == DevelopmentIds.Baseline || data.primary == DevelopmentIds.Retaliation
                 || data.primaryPaid != (data.primary.Length > 0 ? 1 : 0) || data.retaliationPaid != (data.retaliationLearned ? 1 : 0)
-                || data.grantedPoints != 1 + (data.exchanges == 3 ? 1 : 0)
+                || data.grantedPoints != data.initialPoints + (data.relayMilestone ? 1 : 0) + (data.exchanges == 3 ? 1 : 0)
                 || data.pointBalance != data.grantedPoints - data.primaryPaid - data.retaliationPaid || data.pointBalance < 0
                 || primaryKnown && data.exchanges > 0 && data.primary != DevelopmentIds.Momentum
                 || data.retaliationLearned && (data.exchanges != 3 || primaryKnown && data.primary != DevelopmentIds.Momentum)
@@ -139,6 +154,7 @@ namespace EvolvingRPG.Progression
             state = new CharacterDevelopmentState
             {
                 CharacterId = data.characterId, Revision = data.revision, BuildRevision = data.buildRevision,
+                InitialPoints = data.initialPoints, RelayMilestone = data.relayMilestone,
                 Primary = data.primary, Heavy = unresolved ? DevelopmentIds.Baseline : data.heavy,
                 RetaliationLearned = data.retaliationLearned, RetaliationActive = !unresolved && data.retaliationActive,
                 Exchanges = data.exchanges, HasUnresolvedContent = unresolved,
@@ -147,7 +163,7 @@ namespace EvolvingRPG.Progression
             };
             state.heavyExperience.UnionWith(data.heavyExperience);
             message = (unresolved ? state.ContentWarning : "Loaded legal character development; transient encounter state was not serialized.")
-                + (migrated ? " Migrated schema 1 in memory with empty experience; explicit save writes schema 2. No past experience inferred." : "");
+                + (migrated ? " Migrated schema " + originalSchema + " in memory to schema 3; initial fixture point preserved, no mission completion inferred." : "");
             return true;
         }
         public void RecordKnowledge(int exchanges)

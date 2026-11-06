@@ -2,6 +2,7 @@ using System;
 using System.Text.Json;
 using EvolvingRPG.Combat;
 using EvolvingRPG.Progression;
+using EvolvingRPG.Expeditions;
 
 internal static class Program
 {
@@ -10,6 +11,7 @@ internal static class Program
     static int Main()
     {
         Run("Fresh character identity and ownership", Fresh);
+        Run("Mission lifecycle, first-time settlement and schema-2 migration", Missions);
         Run("Investment preview identity, revision and replay protection", Previews);
         Run("Deliberate ownership versus knowledge and activation", Choices);
         Run("Experience deduplication and atomic validation", Experience);
@@ -30,6 +32,59 @@ internal static class Program
     }
     static void Check(bool condition, string message) { assertions++; if (!condition) throw new InvalidOperationException(message); }
     static string Fact(string profile, string outcome) => HeavyExperienceCatalog.Id(profile, outcome);
+    static void Missions()
+    {
+        var a = new CharacterDevelopmentState(0); var b = new CharacterDevelopmentState(0);
+        Check(a.Balance == 0 && !a.Purchase(DevelopmentIds.Breaker, a.Revision, out _), "unearned loop point");
+        var run = new ExpeditionAttempt(a.CharacterId, ExpeditionAttempt.Relay);
+        Check(!run.Finish(run.Id, ExpeditionPhase.Completed) && !run.Settle(run.Id, a), "accepted attempt settled");
+        Check(run.Deploy(run.Id) && !run.Defeat("stale", "fast") && !run.Finish(run.Id, ExpeditionPhase.Completed), "stale/uncleared completion");
+        Check(run.Defeat(run.Id, "fast") && !run.Defeat(run.Id, "fast") && !run.Finish(run.Id, ExpeditionPhase.Completed), "duplicate/partial defenders");
+        Check(run.Defeat(run.Id, "guarded") && run.Finish(run.Id, ExpeditionPhase.Completed), "real objective model cannot finish");
+        Check(!run.Settle(run.Id, b) && run.Settle(run.Id, a) && a.Balance == 1 && a.RelayMilestone && run.PointAwarded, "settlement identity/award");
+        Check(!run.Settle(run.Id, a) && !run.Finish(run.Id, ExpeditionPhase.Completed) && a.Balance == 1, "duplicate settlement");
+        Check(a.Purchase(a.PreviewPurchase(DevelopmentIds.Momentum), out _) && a.Balance == 0, "earned point cannot be invested deliberately");
+        Check(CharacterDevelopmentState.TryRestore(a.Export(), out var loaded, out _) && loaded.RelayMilestone && !loaded.GrantRelayMilestone(), "reload reopens milestone");
+        foreach (var outcome in new[] { ExpeditionPhase.Completed, ExpeditionPhase.Failed, ExpeditionPhase.Abandoned })
+        {
+            var next = new ExpeditionAttempt(a.CharacterId, ExpeditionAttempt.Relay);
+            Check(next.Id != run.Id && next.Deploy(next.Id), "retry identity");
+            next.Defeat(next.Id,"fast"); next.Defeat(next.Id,"guarded");
+            Check(next.Finish(next.Id,outcome) && next.Settle(next.Id,a) && !next.PointAwarded && a.Balance == 0, "repeat/failure/abandon minted point");
+        }
+        var legacy = new CharacterDevelopmentState().Export(); legacy.schemaVersion=2; legacy.initialPoints=0;
+        Check(CharacterDevelopmentState.TryRestore(legacy,out var upgraded,out _) && upgraded.InitialPoints==1 && !upgraded.RelayMilestone
+            && upgraded.Balance==1 && upgraded.Export().schemaVersion==3 && legacy.schemaVersion==2 && legacy.initialPoints==0, "schema-2 migration changed or inferred progress");
+        var corrupt=a.Export(); corrupt.initialPoints=2;
+        Check(!CharacterDevelopmentState.TryRestore(corrupt,out _,out _), "invalid initial grant");
+        foreach (var outcome in new[] { ExpeditionPhase.Failed, ExpeditionPhase.Abandoned })
+        {
+            var fresh = new CharacterDevelopmentState(0); var failed = new ExpeditionAttempt(fresh.CharacterId, ExpeditionAttempt.Relay);
+            Check(failed.Deploy(failed.Id) && failed.Finish(failed.Id,outcome) && failed.Settle(failed.Id,fresh)
+                && !failed.PointAwarded && fresh.Balance==0 && !fresh.RelayMilestone, "unsuccessful first attempt paid milestone");
+        }
+        var priorityOwner = new CharacterDevelopmentState(0); var priority = new ExpeditionAttempt(priorityOwner.CharacterId, ExpeditionAttempt.Priority);
+        Check(priority.Deploy(priority.Id) && !priority.Defeat(priority.Id,"unknown") && priority.Defeat(priority.Id,"fast")
+            && priority.ObjectivesReady && priority.Finish(priority.Id,ExpeditionPhase.Completed) && priority.Settle(priority.Id,priorityOwner)
+            && !priority.PointAwarded && !priorityOwner.RelayMilestone && priorityOwner.Balance==0, "optional guard or priority reward policy wrong");
+        CharacterDevelopmentState breaker = null, momentum = null;
+        foreach (var discipline in new[] { DevelopmentIds.Breaker, DevelopmentIds.Momentum })
+        {
+            var warrior = new CharacterDevelopmentState(0); var mission = new ExpeditionAttempt(warrior.CharacterId,ExpeditionAttempt.Relay);
+            var stale = warrior.PreviewPurchase(discipline); int build = warrior.BuildRevision;
+            Check(mission.Deploy(mission.Id) && mission.Defeat(mission.Id,"guarded") && mission.Defeat(mission.Id,"fast")
+                && mission.Finish(mission.Id,ExpeditionPhase.Completed) && mission.Settle(mission.Id,warrior), "equal-resource completion setup");
+            Check(warrior.BuildRevision==build && !warrior.Purchase(stale,out _) && warrior.Primary=="", "reward changed build or accepted stale investment");
+            Check(warrior.Purchase(warrior.PreviewPurchase(discipline),out _) && warrior.Granted==1 && warrior.Balance==0
+                && warrior.ExperienceCount==0 && warrior.Exchanges==0 && !warrior.RetaliationLearned, "mission fabricated experience or investment economy");
+            Check(CharacterDevelopmentState.TryRestore(warrior.Export(),out var restored,out _) && restored.Primary==discipline
+                && restored.RelayMilestone && restored.Balance==0, "mission-funded specialization restore");
+            if(discipline==DevelopmentIds.Breaker) breaker=warrior; else momentum=warrior;
+        }
+        Check(breaker.CharacterId!=momentum.CharacterId && breaker.InitialPoints==momentum.InitialPoints
+            && breaker.Granted==momentum.Granted && breaker.BuildRevision==momentum.BuildRevision
+            && !breaker.Owns(DevelopmentIds.Momentum) && !momentum.Owns(DevelopmentIds.Breaker), "equal-resource identities leaked or received unequal budgets");
+    }
     static void Previews()
     {
         var a = new CharacterDevelopmentState(); var b = new CharacterDevelopmentState();
@@ -96,7 +151,7 @@ internal static class Program
     }
     static void Migration()
     {
-        var a = Developed(); var legacy = a.Export(); legacy.schemaVersion = 1; legacy.heavyExperience = null;
+        var a = Developed(); var legacy = a.Export(); legacy.schemaVersion = 1; legacy.initialPoints = 0; legacy.heavyExperience = null;
         string original = JsonSerializer.Serialize(legacy, Json);
         for (int i = 0; i < 3; i++)
         {
@@ -104,7 +159,7 @@ internal static class Program
             Check(loaded.CharacterId == a.CharacterId && loaded.Revision == a.Revision && loaded.BuildRevision == a.BuildRevision
                 && loaded.Primary == a.Primary && loaded.Heavy == a.Heavy && loaded.RetaliationActive && loaded.Exchanges == a.Exchanges
                 && loaded.Balance == a.Balance && loaded.ExperienceCount == 0, "migration changed power or invented history");
-            Check(JsonSerializer.Serialize(legacy, Json) == original && loaded.Export().schemaVersion == 2, "source mutated or version not upgraded");
+            Check(JsonSerializer.Serialize(legacy, Json) == original && loaded.Export().schemaVersion == 3, "source mutated or version not upgraded");
         }
         legacy.heavyExperience = a.ExperienceFacts;
         Check(!CharacterDevelopmentState.TryRestore(legacy, out _, out _), "populated legacy history dropped");

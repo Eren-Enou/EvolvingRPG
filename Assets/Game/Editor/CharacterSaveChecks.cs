@@ -27,7 +27,7 @@ namespace EvolvingRPG.Editor
                 && !second.RetaliationLearned && second.Exchanges == 0, "two characters leaked state");
             for (int i = 0; i < 3; i++) Require(store.Load("A", out loaded, out _) && loaded.Balance == 0 && !loaded.Purchase(DevelopmentIds.Retaliation, loaded.Revision, out _), "reload duplicated spend/grant");
             Pass("Real JSON roundtrip, File.Replace backup, two independent characters and repeated-load resource integrity");
-            var legacy = a.Export(); legacy.schemaVersion = 1; legacy.heavyExperience = null;
+            var legacy = a.Export(); legacy.schemaVersion = 1; legacy.initialPoints = 0; legacy.heavyExperience = null;
             string legacyRoot = Path.Combine(root, "Legacy"); Directory.CreateDirectory(legacyRoot);
             string legacyPath = Path.Combine(legacyRoot, "character-a.json"), legacyJson = JsonUtility.ToJson(legacy);
             File.WriteAllText(legacyPath, legacyJson); var legacyStore = new CharacterSaveStore(legacyRoot);
@@ -36,7 +36,7 @@ namespace EvolvingRPG.Editor
                     && loaded.ExperienceCount == 0 && loaded.CharacterId == a.CharacterId && loaded.Revision == a.Revision
                     && loaded.BuildRevision == a.BuildRevision && loaded.Balance == 0 && loaded.RetaliationActive && loaded.Exchanges == 3
                     && File.ReadAllText(legacyPath) == legacyJson, "legacy migration fabricated history, changed power or wrote without consent");
-            Require(legacyStore.Save("A", loaded, out _) && JsonUtility.FromJson<CharacterSaveData>(File.ReadAllText(legacyPath)).schemaVersion == 2
+            Require(legacyStore.Save("A", loaded, out _) && JsonUtility.FromJson<CharacterSaveData>(File.ReadAllText(legacyPath)).schemaVersion == 3
                 && File.ReadAllText(legacyPath + ".bak") == legacyJson && legacy.schemaVersion == 1 && legacy.heavyExperience == null,
                 "explicit migration write lost original backup or mutated source DTO");
             Pass("Schema 1 migrates without invented history or changed identity/build/balance; read is non-writing, explicit save retains legacy backup");
@@ -68,7 +68,7 @@ namespace EvolvingRPG.Editor
             Require(!CharacterDevelopmentState.TryRestore(invalidHistory, out _, out _), "advanced history without completed impact accepted");
             invalidHistory = a.Export(); invalidHistory.heavyExperience = new[] { a.ExperienceFacts[0], a.ExperienceFacts[0] };
             Require(!CharacterDevelopmentState.TryRestore(invalidHistory, out _, out _), "duplicate history accepted");
-            invalidHistory = a.Export(); invalidHistory.schemaVersion = 1;
+            invalidHistory = a.Export(); invalidHistory.schemaVersion = 1; invalidHistory.initialPoints = 0;
             File.WriteAllText(path, JsonUtility.ToJson(invalidHistory)); original = File.ReadAllText(path);
             Require(!store.Load("A", out _, out _) && !store.Save("A", a, out _) && File.ReadAllText(path) == original, "legacy populated history silently discarded");
             Pass("Unknown experience and legacy populated history protected; duplicate and inconsistent experience rejected");
@@ -85,6 +85,45 @@ namespace EvolvingRPG.Editor
             var blocked = Path.Combine(root, "not-a-directory"); File.WriteAllText(blocked, "fixture");
             Require(!new CharacterSaveStore(blocked).Save("A", a, out _) && a.Balance == 0 && a.RetaliationActive, "failed I/O changed memory");
             Pass("Missing definition retained/inactive with protected original; inconsistent economy/configuration, slot traversal and failed I/O reject safely");
+            MissionEconomy(root);
+        }
+        static void MissionEconomy(string root)
+        {
+            var warrior = new CharacterDevelopmentState(0);
+            var store = new CharacterSaveStore(Path.Combine(root,"MissionEconomy"));
+            Require(store.Save("A",warrior,out _),"pre-mission zero-point save failed");
+            string path=Path.Combine(store.Location,"character-a.json");
+            string before=File.ReadAllText(path);
+            Require(warrior.GrantRelayMilestone() && warrior.Purchase(warrior.PreviewPurchase(DevelopmentIds.Momentum),out _)
+                && store.Save("A",warrior,out _),"mission-funded development save failed");
+            string completed=File.ReadAllText(path);
+            for(int i=0;i<3;i++)
+                Require(store.Load("A",out var loaded,out _) && loaded.CharacterId==warrior.CharacterId
+                    && loaded.InitialPoints==0 && loaded.RelayMilestone && loaded.Granted==1 && loaded.Balance==0
+                    && loaded.Primary==DevelopmentIds.Momentum && !loaded.GrantRelayMilestone()
+                    && File.ReadAllText(path)==completed,"schema-3 completion flag/wallet not atomically restored or read rewrote file");
+            Require(File.ReadAllText(path+".bak")==before,"mission save backup lost full prior character");
+            File.WriteAllText(path,"{broken");
+            Require(store.Load("A",out var recovered,out _) && recovered.CharacterId==warrior.CharacterId
+                && !recovered.RelayMilestone && recovered.Balance==0 && recovered.Primary==""
+                && !store.Save("A",recovered,out _) && File.ReadAllText(path)=="{broken","backup mixed old wallet with new milestone or overwrote damaged original");
+            File.WriteAllText(path,completed);
+            Pass("Schema 3: mission flag and spent wallet roundtrip together; repeated loads mint nothing; corrupt latest recovers whole pre-mission character without history merging or automatic repair");
+
+            var legacy=new CharacterDevelopmentState(); legacy.Purchase(DevelopmentIds.Breaker,legacy.Revision,out _);
+            var dto=legacy.Export(); dto.schemaVersion=2; dto.initialPoints=0;
+            var legacyRoot=Path.Combine(root,"Schema2"); Directory.CreateDirectory(legacyRoot);
+            string legacyPath=Path.Combine(legacyRoot,"character-a.json"), json=JsonUtility.ToJson(dto);
+            File.WriteAllText(legacyPath,json); var oldStore=new CharacterSaveStore(legacyRoot);
+            Require(oldStore.Load("A",out var upgraded,out string message) && message.Contains("Migrated schema 2")
+                && upgraded.InitialPoints==1 && !upgraded.RelayMilestone && upgraded.Balance==0 && upgraded.Primary==DevelopmentIds.Breaker
+                && File.ReadAllText(legacyPath)==json,"schema-2 migration changed prior economy or wrote during read");
+            Require(oldStore.Save("A",upgraded,out _) && File.ReadAllText(legacyPath+".bak")==json
+                && JsonUtility.FromJson<CharacterSaveData>(File.ReadAllText(legacyPath)).schemaVersion==3,"explicit schema-2 migration did not retain backup");
+            dto.relayMilestone=true; File.WriteAllText(legacyPath,JsonUtility.ToJson(dto)); string protectedJson=File.ReadAllText(legacyPath);
+            Require(!oldStore.Load("A",out _,out _) && !oldStore.Save("A",upgraded,out _)
+                && File.ReadAllText(legacyPath)==protectedJson,"legacy schema silently ignored mission fields");
+            Pass("Schema 2: in-memory migration preserves fixture funding/ownership; explicit save upgrades with original backup; unexpected legacy mission fields protect against rollback/overwrite");
         }
         public static void NativeRoundtrip()
         {

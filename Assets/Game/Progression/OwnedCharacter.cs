@@ -11,6 +11,9 @@ namespace EvolvingRPG.Progression
     {
         [SerializeField] AttackDefinition baseline, breaker, momentum;
         [SerializeField] EnemySandboxHUD encounter;
+        [SerializeField, Range(0, 1)] int initialFixturePoints = 1;
+        [SerializeField] string saveFolder = "CharacterDevelopmentPrototype";
+        [SerializeField, Min(1)] float developmentRadius = 2f;
         CombatActions actions;
         ContextualDiscovery discovery;
         RetaliatoryMomentumTrial trial;
@@ -30,17 +33,18 @@ namespace EvolvingRPG.Progression
         public bool RetaliationActive => State != null && State.RetaliationActive && State.Heavy == DevelopmentIds.Momentum;
         public int BuildRevision => State?.BuildRevision ?? 0;
         public bool CanDevelop => actions != null && !actions.Busy && !actions.MovementBlocked
-            && Vector3.Distance(transform.position, spawn) < 2f && SafeOpponents();
+            && Vector3.Distance(transform.position, spawn) < developmentRadius && SafeOpponents();
         public void Configure(AttackDefinition original, AttackDefinition planted, AttackDefinition advancing, EnemySandboxHUD hud)
         { baseline = original; breaker = planted; momentum = advancing; encounter = hud; }
         void Awake()
         {
             actions = GetComponent<CombatActions>(); discovery = GetComponent<ContextualDiscovery>(); trial = GetComponent<RetaliatoryMomentumTrial>();
             mouseLook = GetComponent<PlaygroundMouseLook>(); playerInput = GetComponent<PlayerInput>();
-            State = new CharacterDevelopmentState(); spawn = transform.position;
+            State = new CharacterDevelopmentState(initialFixturePoints); spawn = transform.position;
+            if (initialFixturePoints == 0) Message = "Fresh Warrior: earn a mission milestone point before making a deliberate investment.";
             Review = new CombatActionReview(actions, transform);
             Experience = new HeavyExperienceCollector(actions, GetComponent<CombatVitality>(), () => State, ExperienceProfile);
-            saves = new CharacterSaveStore(System.IO.Path.Combine(Application.persistentDataPath, "CharacterDevelopmentPrototype"));
+            saves = new CharacterSaveStore(System.IO.Path.Combine(Application.persistentDataPath, saveFolder));
         }
         void Start()
         {
@@ -74,12 +78,12 @@ namespace EvolvingRPG.Progression
         }
         public bool Purchase(string id, int revision)
         {
-            if (!CanDevelop) { Message = "Return to spawn with R and finish recovery before developing."; return false; }
+            if (!CanDevelop) { Message = "Return to the hub or safe spawn and finish recovery before developing."; return false; }
             bool success = State.Purchase(id, revision, out string message); Message = message; if (success) Apply(); return success;
         }
         public bool Purchase(DevelopmentPurchasePreview preview)
         {
-            if (!CanDevelop) { Message = "Return to spawn with R and finish recovery before developing."; return false; }
+            if (!CanDevelop) { Message = "Return to the hub or safe spawn and finish recovery before developing."; return false; }
             bool success = State.Purchase(preview, out string message); Message = message; if (success) Apply(); return success;
         }
         public bool ConfigureHeavy(string id, bool retaliation)
@@ -89,8 +93,8 @@ namespace EvolvingRPG.Progression
         }
         public bool FreshCharacter()
         {
-            if (!CanDevelop) { Message = "Return to spawn with R before creating a fresh character."; return false; }
-            State = new CharacterDevelopmentState(); discovery.RestoreCharacterKnowledge(0); Apply();
+            if (!CanDevelop) { Message = "Return to the hub or safe spawn before creating a fresh character."; return false; }
+            State = new CharacterDevelopmentState(initialFixturePoints); discovery.RestoreCharacterKnowledge(0); Apply();
             Review.Clear();
             Experience.ReplaceCharacter();
             Message = "Fresh character: no knowledge, purchases or active evolution. Unsaved previous character was replaced."; return true;
@@ -131,7 +135,7 @@ namespace EvolvingRPG.Progression
         public bool TryOpenMenu()
         {
             if (menu) return true;
-            if (!CanDevelop) { Message = "Inspect at the safe spawn: press R first. Combat continues normally."; return false; }
+            if (!CanDevelop) { Message = "Inspect at the hub or safe spawn while ready. Combat continues normally."; return false; }
             previousMouseLook = mouseLook != null && mouseLook.enabled; previousInput = playerInput != null && playerInput.inputIsActive;
             if (mouseLook != null) mouseLook.enabled = false;
             if (playerInput != null) playerInput.DeactivateInput();

@@ -8,6 +8,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
+    <Compile Include="../../Assets/Game/Expeditions/ExpeditionAttempt.cs" Link="Production/ExpeditionAttempt.cs" />
     <Compile Include="../../Assets/Game/Progression/DevelopmentPurchasePreview.cs" Link="Production/DevelopmentPurchasePreview.cs" />
     <Compile Include="../../Assets/Game/Progression/CharacterDevelopmentState.cs" Link="Production/CharacterDevelopmentState.cs" />
     <Compile Include="../../Assets/Game/Progression/CharacterSaveData.cs" Link="Production/CharacterSaveData.cs" />

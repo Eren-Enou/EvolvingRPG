@@ -28,7 +28,9 @@ namespace EvolvingRPG.Progression
                 if (!json.TrimStart().StartsWith("{") || !json.TrimEnd().EndsWith("}")) { message = "Malformed save."; return false; }
                 var data = JsonUtility.FromJson<CharacterSaveData>(json);
                 if (data == null) { message = "Empty save."; return false; }
-                if (data.schemaVersion != 1 && data.schemaVersion != 2) { protectedRecord = true; message = "Unsupported schema " + data.schemaVersion + "; original preserved."; return false; }
+                if (data.schemaVersion != 1 && data.schemaVersion != 2 && data.schemaVersion != 3) { protectedRecord = true; message = "Unsupported schema " + data.schemaVersion + "; original preserved."; return false; }
+                if (data.schemaVersion < 3 && (data.initialPoints != 0 || data.relayMilestone))
+                { protectedRecord = true; message = "Unexpected mission data in legacy schema; original preserved."; return false; }
                 if (data.schemaVersion == 1 && data.heavyExperience != null && data.heavyExperience.Length > 0)
                 { protectedRecord = true; message = "Unexpected history in legacy schema; original preserved pending migration."; return false; }
                 if (data.heavyExperience != null) foreach (string fact in data.heavyExperience)

@@ -1,0 +1,14 @@
+# Continuous development state
+
+- Branch: development/continuous-playable-rpg; starting verified checkpoint 8baacc1.
+- Clean starting tree, one worktree; remote fetched. All named earlier branches and main are ancestors of 8baacc1; no independent divergent commits found. Main unchanged.
+- Existing movement/combat/discovery/owned specialization/save/history: implemented, technical tests historically passed; subjective acceptance partial.
+- Implemented in source: RelayOutpost builder, compact hub stations, one-Warrior zone travel, relay/priority contracts, unique attempts, objective/terminal guards, reports/return/retry, defeat/abandon and hub-fall recovery. R disabled only in new loop; previous scenes preserved.
+- Actually passed: baseline offline 10/10 cases / 9,082 assertions; current offline 11/11 / 9,111; runtime and Editor source/API compile with installed Unity 6000.6.7f1 compiler and cached real references; diff whitespace check. Existing obsolete-API warnings remain. These are not native integration results.
+- Design: new single authored scene with compact hub/mission zones and one Warrior, reusing current systems. No mid-combat saves. First relay milestone grants one development point once per character; old sandbox fixture grants remain compatible.
+- Schema 3 persists initial budget and milestone with wallet. Legacy schema 1/2 migrates in memory preserving initial fixture point, no invented completion or read rewrite. New loop saves use separate RelayPrototype folder. No attempts/actions/opportunities persisted, no mid-mission save or autosave.
+- Pending: import current source; generate RelayOutpost explicitly; run fourteen-stage Extended Checks including new native relay suite/expanded real-file save checks; inspect normal Play route/controls/camera/report; attempt Windows development build. New scene/material assets have not yet been generated.
+- Computer control stopped with physical Escape; user subsequently explicitly chose "Keep working without computer control". Continuation used source/CLI only. Existing Editor remains running; no second instance started. Do not bypass this boundary with file-trigger execution or injected assemblies.
+- New native suite is prepared, not run: focused F; menu input; actual Heavy collision/impact against stationary controlled defenders; separately labeled terminal-hit lifecycle fixtures; failure/abandon/repeat/priority; equal-funded A/B identities; fall recovery and teardown. Uses isolated Logs save directories.
+- Next dependency: native verification/repair and authored scene, then development build. Keep subjective depth/fairness gates before another owned modifier. Goal remains active; full details in CONTINUOUS_DEVELOPMENT_REPORT.md.
+- Tests and generated output remain under ignored Logs. Do not access personal saves in automated tests.

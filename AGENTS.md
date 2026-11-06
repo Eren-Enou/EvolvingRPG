@@ -1,5 +1,9 @@
 # Instructions to Codex / coding agents
 
+## Active continuation — 2026-11-06
+
+The user authorized continuous implementation toward the hub/expedition/return loop, superseding the older V0.4-only scope below. Work on `development/continuous-playable-rpg`, from consolidated ancestor `8baacc1`; main stays unchanged. Read `docs/CONTINUOUS_DEVELOPMENT_STATE.md` and `docs/CONTINUOUS_DEVELOPMENT_REPORT.md` for pending gates. Current source adds V0.5 RelayOutpost authoring, lifecycle and once-per-character milestone funding. New scenes must use explicit Editor APIs, never import-trigger execution. Save schema is now 3; schemas 1/2 migrate in memory preserving fixture funding without inventing mission completion. Cached-reference compilation/offline checks are not Unity integration. Extended Checks now has fourteen stages. The Editor was left alone after physical Escape stopped computer control; do not bypass that stop using injected execution or a second Editor. Preserve existing scenes, stamina, attack assets, ownership/discovery/activation separation and unknown-save protections. Subjective playtest gates remain: technical checks alone do not justify another owned modifier.
+
 Read `docs/VISION.md` and `docs/MILESTONES.md` before making changes.
 
 ## Product goals

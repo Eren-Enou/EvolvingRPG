@@ -83,7 +83,12 @@ namespace EvolvingRPG.Progression
             foreach (var entry in character.GetComponent<ContextualDiscovery>().Ledger.Journal) GUILayout.Label(entry);
             GUILayout.Label("Recent attacks / session review only / retained across R; cleared by character creation or load. No mastery or rewards.");
             if (character.Review.Count == 0) GUILayout.Label("No completed or interrupted attacks yet. Fight, then R and Tab to inspect.");
-            foreach (var entry in character.Review.NewestFirst) GUILayout.Label(entry.Summary);
+            foreach (var entry in character.Review.NewestFirst)
+            {
+                GUILayout.Label(entry.Summary);
+                string explanation = character.Experience.ExplanationFor(entry.Sequence);
+                if (explanation != null) GUILayout.Label(explanation);
+            }
             GUILayout.Label("Displacement is the observed start-to-end position change, not distance walked or proof that a wall caused shortened travel. Applied totals include all contacted targets.");
             GUILayout.EndScrollView(); GUILayout.EndArea();
         }

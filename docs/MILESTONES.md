@@ -1,5 +1,7 @@
 # Development milestones
 
+**Current continuous follow-up (2026-11-06):** the pending Unity integration passed all twelve baseline regression stages. DevelopmentTest now retains per-Heavy experience explanations in its session review across R, clearing them on fresh/load. Four model groups and eight native Heavy cases passed; final integration results are tracked in the continued report. This improves inspection of existing V0.4 D, adding no power or economy. Player feedback remains required.
+
 **Approach:** Validate one mechanic at a time. Each milestone should produce something playable. The vision document is the long-term compass, not the first milestone's scope.
 
 **Long-term progression requirements:** `EVOLVING_TALENT_SYSTEM.md` defines the established talent-system direction and labels mechanics that remain proposals. `PROGRESSION_DEVELOPMENT_PATH.md` maps that charter to small validation experiments. The continued assignment implemented **V0.4 D: character-owned development and minimal versioned saves**, after the focused input gate passed. C1/C2/C3 remain preserved comparisons. See [CONTINUED_DEVELOPMENT_REPORT.md](CONTINUED_DEVELOPMENT_REPORT.md) and [CHARACTER_DEVELOPMENT_PLAYGROUND.md](CHARACTER_DEVELOPMENT_PLAYGROUND.md). All economy/commitment rules remain experimental; player feel and full mastery integration are not complete. Preserve the engine version declared by `ProjectSettings/ProjectVersion.txt` rather than changing it to match the historical V0.1 version target.

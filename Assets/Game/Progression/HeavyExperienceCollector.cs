@@ -12,6 +12,14 @@ namespace EvolvingRPG.Progression
         readonly Func<CharacterDevelopmentState> current;
         readonly Func<AttackDefinition, string> profileFor;
         readonly List<CombatObservation> candidates = new List<CombatObservation>(16);
+        // Presentation only; never used for eligibility, credit or persistence.
+        readonly Queue<(int Sequence, string Explanation)> review = new Queue<(int, string)>();
+        public int ReviewCount => review.Count;
+        public string ExplanationFor(int sequence)
+        {
+            foreach (var entry in review) if (entry.Sequence == sequence) return entry.Explanation;
+            return null;
+        }
         CharacterDevelopmentState acceptedCharacter;
         string profile;
         bool attached;
@@ -32,7 +40,14 @@ namespace EvolvingRPG.Progression
         }
         void Discard() { pending = -1; candidates.Clear(); acceptedCharacter = null; }
         void ResetPending() { Discard(); Latest = "Encounter reset: completed Heavy experience retained; pending evidence discarded."; }
-        public void ReplaceCharacter() { Discard(); Latest = "Character experience loaded or fresh; no pending combat evidence restored."; }
+        public void ReplaceCharacter() { Discard(); review.Clear(); Latest = "Character experience loaded or fresh; no pending combat evidence restored."; }
+        void Finish(string explanation)
+        {
+            Latest = explanation;
+            if (review.Count == 6) review.Dequeue();
+            review.Enqueue((pending, explanation));
+            Discard();
+        }
         void Observe(CombatObservation value)
         {
             if (value.Kind == CombatObservationKind.Accepted)
@@ -51,7 +66,7 @@ namespace EvolvingRPG.Progression
             }
             if (pending < 0 || value.ActionSequence != pending) return;
             if (value.Kind == CombatObservationKind.Interrupted)
-            { Latest = "Heavy experience not recorded: interrupted before recovery completed."; Discard(); return; }
+            { Finish("Heavy experience not recorded: interrupted before recovery completed."); return; }
             if (value.Kind == CombatObservationKind.HitResolved)
             {
                 string reason = Reject(value);
@@ -60,8 +75,10 @@ namespace EvolvingRPG.Progression
                 return;
             }
             if (value.Kind != CombatObservationKind.Completed) return;
-            if (!ReferenceEquals(current(), acceptedCharacter) || current().BuildRevision != build)
-            { Latest = "Heavy experience not recorded: character or build changed."; Discard(); return; }
+            if (!ReferenceEquals(current(), acceptedCharacter))
+            { Latest = "Heavy experience not recorded: character changed."; Discard(); return; }
+            if (current().BuildRevision != build)
+            { Finish("Heavy experience not recorded: build changed."); return; }
             var facts = new HashSet<string>(StringComparer.Ordinal);
             foreach (var candidate in candidates)
             {
@@ -78,10 +95,9 @@ namespace EvolvingRPG.Progression
                 if (facts.Contains(HeavyExperienceCatalog.Id(profile, outcome)) && !acceptedCharacter.HasExperience(profile, outcome))
                     newLabels.Add(HeavyExperienceCatalog.Label(outcome));
             int added = acceptedCharacter.RecordExperience(facts);
-            Latest = facts.Count == 0 ? "Heavy experience not recorded: " + rejection + "."
+            Finish(facts.Count == 0 ? "Heavy experience not recorded: " + rejection + "."
                 : added == 0 ? "Heavy experience already demonstrated for " + DevelopmentIds.Label(profile) + "; no repeated credit."
-                : "Heavy experience: " + DevelopmentIds.Label(profile) + " demonstrated " + string.Join(", ", newLabels) + ". History only; no bonus or points.";
-            Discard();
+                : "Heavy experience: " + DevelopmentIds.Label(profile) + " demonstrated " + string.Join(", ", newLabels) + ". History only; no bonus or points.");
         }
         string Reject(CombatObservation hit)
         {

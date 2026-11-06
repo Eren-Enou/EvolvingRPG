@@ -1,5 +1,28 @@
 # Continued development report — 2026-11-05
 
+## Current follow-up - verified integration and inspectable experience (2026-11-06)
+
+Started clean at `b1485d9`; branch `development/verified-character-depth`. User authorization supersedes the earlier offline-only restriction. No Unity process was running, so the installed, project-configured Unity 6000.6.7f1 was launched for this project. No second instance, batch mode, unsaved scene overwrite or personal-save access was used.
+
+### First checkpoint
+
+- Unity imported and compiled the previous pure-type extraction and identity-bound preview changes. The initial twelve-suite run, started `2026-11-06T09:29:51Z`, passed every stage. This includes native input, camera/strafe/jump, combat, technique, C1/C2/C3, ownership, Unity JsonUtility/file-store checks, panel lifecycle and Heavy experience. Preserved reports: ignored `Logs/ContinuousDevelopment/Baseline/`. Offline production-state checks also passed 10/10 cases, 9,082 assertions.
+- Using the computer-use skill, the actual panel's Breaker preview was opened, canceled without spending, reopened and confirmed: one point spent, Breaker selected, Momentum unavailable. Fresh confirmation then produced a new identity, one point and Baseline. This disposable Play-mode inspection wrote no personal slot. Native fixture save/load coverage uses ignored Logs directories. UI load-latch behavior is not inferred from this button check.
+- Identified a readability gap: R overwrote `HeavyExperienceCollector.Latest` before the instructed R/Tab review. Implemented six bounded, sequence-linked Heavy result explanations beside recent attacks. New/duplicate/rejected/interrupted outcomes remain inspectable after reset. Fresh/load clear session explanations; no persistence, credit policy, points, modifiers or stamina change.
+- Extended HeavyExperienceChecks verifies duplicate completion, interruption, bounded eviction, reset retention and replacement clearing, plus real per-attack explanations across all eight existing native cases. The updated isolated suite passed all four model groups and eight native cases with no captured runtime Console errors. Tests are authoritative production collectors and real native actions, not a copied simulation.
+
+Changed so far: Assets/Game/Progression/HeavyExperienceCollector.cs, DevelopmentPanel.cs; Assets/Game/Editor/HeavyExperienceChecks.cs; AGENTS.md; docs/HEAVY_EXPERIENCE_HISTORY.md, CHARACTER_DEVELOPMENT_PLAYGROUND.md, MILESTONES.md and this report. No scene, prefab, attack asset, vendor, package or ProjectSettings change. Schema remains 2; new review strings are transient only.
+
+Next gate: visual inspection of the retained explanation and final integrated regression after any subsequent slice. Compilation emitted existing obsolete-API warnings (FindFirstObjectByType); no new compile errors were observed. Technical checks and agent UI inspection are not human gameplay-feel or balance validation. No standalone build or power-loss test performed.
+
+### Launch and inspect
+
+Open Assets/Game/Scenes/DevelopmentTest.unity in the existing Editor and press Play. Existing WASD/Q/E, Space, mouse/wheel, LMB/RMB, Shift and R remain. Complete or interrupt a Heavy, press R, then Tab and scroll to Recent attacks. Its experience explanation should remain beneath that exact attack. Repetition must not grant points; fresh/load clear session review while supported saved facts remain. No scene rebuild or new Inspector wiring is needed.
+
+The existing three experiments in docs/CHARACTER_IDENTITY_PATH.md remain the next design path. This presentation improvement prepares fairness observations without accepting new eligibility or power rules.
+
+---
+
 ## Latest follow-up - offline character-state safeguards
 
 Started clean at `13ceb84` on `development/heavy-experience`; continued on `development/offline-character-checks`. Implementation checkpoint: **768e96f**. This assignment used direct files and noninteractive CLI only. No computer-use tools, screenshots, UI automation, Unity launch/batch mode/Editor control, scene/prefab changes or personal-save access occurred. Unity results in the historical section below do not verify this follow-up.

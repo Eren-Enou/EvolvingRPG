@@ -54,8 +54,12 @@ namespace EvolvingRPG.Editor
                 sequence++; Send(CombatObservationKind.Accepted); Send(CombatObservationKind.HitResolved, Receipt(), receiver);
                 Require(state.ExperienceCount == 0, "impact committed experience before recovery");
                 Send(CombatObservationKind.Completed); Require(state.ExperienceCount == 1, "initiative without enemy strike did not count");
+                Require(collector.ExplanationFor(sequence)?.Contains("demonstrated completed live impact") == true && collector.ReviewCount == 1,
+                    "completed action lost sequence-linked experience explanation");
                 Send(CombatObservationKind.Completed); int revision = state.Revision;
+                Require(collector.ReviewCount == 1, "duplicate completion duplicated presentation history");
                 Complete(Receipt()); Require(state.ExperienceCount == 1 && state.Revision == revision, "duplicate or repeated contact grew history");
+                Require(collector.ExplanationFor(sequence)?.Contains("already demonstrated") == true, "repeat explanation attached to wrong action");
                 Complete(Receipt(EnemyPhase.Windup, broken: true, guarded: true));
                 Require(state.ExperienceCount == 3 && state.Balance == 1 && state.BuildRevision == 0 && state.Knowledge == DiscoveryKnowledge.Undiscovered,
                     "qualitative facts changed power/resources/knowledge or lost pre-impact context");
@@ -68,6 +72,7 @@ namespace EvolvingRPG.Editor
                 try { Complete(Receipt(), dummy.AddComponent<TrainingTarget>()); } finally { UnityEngine.Object.DestroyImmediate(dummy); }
                 sequence++; Send(CombatObservationKind.Accepted); Send(CombatObservationKind.Completed);
                 sequence++; Send(CombatObservationKind.Accepted); Send(CombatObservationKind.HitResolved, Receipt(), receiver); Send(CombatObservationKind.Interrupted); Send(CombatObservationKind.Completed);
+                Require(collector.ExplanationFor(sequence)?.Contains("interrupted before recovery") == true, "interrupted explanation overwritten by completion");
                 Require(state.ExperienceCount == 0, "inert/foreign/zero/missing-context/Light/dummy/miss/interruption awarded history");
                 Pass("Idle/returning/foreign/zero/missing-context/Light/dummy/miss/interrupted outcomes reject");
 
@@ -83,6 +88,18 @@ namespace EvolvingRPG.Editor
                 Require(state.RecordExperience(new[] { HeavyExperienceCatalog.Id(DevelopmentIds.Breaker, HeavyExperienceCatalog.Contact) }) == 0
                     && state.RecordExperience(new[] { "unknown" }) == 0, "unowned/unknown history accepted");
                 Pass("Reset/disable/character/build invalidation; unknown and unowned facts reject atomically");
+                int firstReviewSequence = sequence + 1;
+                for (int i = 0; i < 7; i++) { sequence++; Send(CombatObservationKind.Accepted); Send(CombatObservationKind.Completed); }
+                string explanation = collector.ExplanationFor(sequence); int historyRevision = state.Revision;
+                Require(collector.ReviewCount == 6 && collector.ExplanationFor(firstReviewSequence) == null
+                    && explanation?.Contains("no qualifying applied enemy contact") == true, "presentation history not bounded or keyed correctly");
+                collector.Attach(); vitality.ResetVitality();
+                Require(collector.ExplanationFor(sequence) == explanation && state.Revision == historyRevision,
+                    "R-style reset lost explanation or changed durable state");
+                collector.ReplaceCharacter();
+                Require(collector.ReviewCount == 0 && collector.ExplanationFor(sequence) == null && state.Revision == historyRevision,
+                    "replacement retained old explanations or changed character state");
+                Pass("Six-entry sequence-linked explanations: duplicate completion, interruption, bounded eviction, reset retention and replacement clearing; no progression side effects");
             }
         }
         static void Native()
@@ -137,10 +154,18 @@ namespace EvolvingRPG.Editor
                     if (actor.Busy) return;
                     int expected = test == 0 || test == 1 ? 1 : test >= 6 ? 3 : 0;
                     Require(owner.State.ExperienceCount == expected, "native history case " + test + " count " + owner.State.ExperienceCount + ": " + owner.Experience.Latest);
+                    var review = owner.Review.Latest;
+                    string explanation = review == null ? null : owner.Experience.ExplanationFor(review.Sequence);
+                    Require(explanation != null && explanation == owner.Experience.Latest, "native action review lost its experience explanation");
+                    string[] expectedExplanation = { "demonstrated", "already demonstrated", "interrupted", "opponent reset", "no qualifying", "non-enemy", "demonstrated", "already demonstrated" };
+                    Require(explanation.Contains(expectedExplanation[test]), "native experience explanation contradicts outcome: " + explanation);
                     if (test == 0) Require(hadHit && firstHit.Resolution.EnemyContext.HasValue
                         && firstHit.Resolution.EnemyContext.Value.PhaseBeforeHit == EnemyPhase.Approach
                         && firstHit.Resolution.EnemyContext.Value.ThreatSequence == 0, "initiative fixture was not truly before first enemy strike");
                     if (test == 5) Require(hadHit && firstHit.Target is TrainingTarget, "dummy exclusion fixture never hit dummy");
+                    hud.ResetEncounter();
+                    Require(owner.Experience.ExplanationFor(review.Sequence) == explanation && owner.Review.Latest == review
+                        && owner.State.ExperienceCount == expected, "native R lost per-attack explanation/history or awarded facts");
                     if (test == 6)
                     {
                         Require(hadHit && firstHit.Resolution.Guarded && firstHit.Resolution.PoiseBroken
@@ -148,6 +173,7 @@ namespace EvolvingRPG.Editor
                         hud.ResetEncounter(); string id = owner.State.CharacterId;
                         Require(owner.SaveSlot("A") && owner.FreshCharacter() && owner.State.ExperienceCount == 0 && owner.SaveSlot("B")
                             && owner.LoadSlot("A") && owner.State.CharacterId == id && owner.State.ExperienceCount == 3
+                            && owner.Experience.ReviewCount == 0 && owner.Experience.ExplanationFor(review.Sequence) == null
                             && !actor.Busy && !actor.CommittedContext.HasValue && !owner.GetComponent<RetaliatoryMomentumTrial>().OpportunityReady,
                             "native save/load/fresh history isolation failed");
                     }

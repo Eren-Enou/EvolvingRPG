@@ -45,3 +45,11 @@ Save to A, create a fresh character and save to B, then load A. Confirm history 
 The remaining question is whether these records help the player recognize a fighting identity and explain progress. They are not a complete familiarity effect. A future refinement needs a separately tested benefit, remaining liability and deliberate learning/configuration policy before these facts become its prerequisites.
 
 **Tools > EvolvingRPG > Run Heavy Experience Checks** (Ctrl+Shift+Alt+F7) runs the isolated evidence tests and eight real native cases, then stops Play. **Inspect Heavy Experience Fixture** (Ctrl+Shift+Alt+F6) runs the same cases and leaves Play open on the genuinely experienced Breaker character at safe spawn with its panel open. Scroll to the Breaker card to inspect its three facts. Both fixtures use isolated saves under Logs, never personal slots. Stop Play after inspection.
+
+## Per-attack explanations (2026-11-06)
+
+Recent attacks now include the corresponding Heavy experience result, keyed by the actor's monotonic action sequence. A completed contact names new facts; a repeated fact explains that no repeated credit is given; an interruption, non-enemy contact, reset opponent or empty contact explains rejection. The collector retains at most six assessed Heavy results, enough for the six-action review even when Light attacks are interleaved. Light and unlisted actions do not inherit a previous Heavy result.
+
+R discards pending evidence but keeps completed session explanations and the existing attack review. This makes the usual fight -> R -> Tab inspection useful: the reset message no longer erases why that specific attack did or did not demonstrate experience. Fresh/load clear these explanations alongside the action review, even when durable experience is loaded. They are not serialized and cannot grant or reopen facts. Disabled collectors discard pending work but retain completed session presentation, matching the existing action review lifecycle.
+
+A result explains the current experimental eligibility policy. It is not a judgment that the player's choice was poor; useful interrupted trades remain a player-feedback question. Review eviction affects presentation only, never the durable fact set.

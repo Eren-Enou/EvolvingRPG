@@ -1,5 +1,7 @@
 # Continuous development state
 
+- Current authorization (2026-11-06): user explicitly changed the goal to allow full computer control. Earlier no-control restriction below is historical and superseded. Native verification may resume in the existing Editor, preserving unsaved edits and isolated saves; no second same-project instance. Pending gates remain unverified until actual results exist.
+
 - Branch: development/continuous-playable-rpg; starting verified checkpoint 8baacc1.
 - Clean starting tree, one worktree; remote fetched. All named earlier branches and main are ancestors of 8baacc1; no independent divergent commits found. Main unchanged.
 - Existing movement/combat/discovery/owned specialization/save/history: implemented, technical tests historically passed; subjective acceptance partial.

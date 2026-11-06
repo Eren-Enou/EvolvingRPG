@@ -10,6 +10,7 @@ try {
         $UnityEditorPath = "C:\Program Files\Unity\Hub\Editor\$version\Editor"
     }
     $runtimeRsp = Get-ChildItem Library/Bee/artifacts -Recurse -Filter Assembly-CSharp.rsp |
+        Where-Object { Test-Path -LiteralPath (Join-Path $_.DirectoryName 'Assembly-CSharp-Editor.rsp') } |
         Sort-Object LastWriteTime -Descending | Select-Object -First 1
     if (!$runtimeRsp) { throw 'No existing Unity compilation graph. Import the project in the configured Editor first.' }
     $editorRsp = Join-Path $runtimeRsp.DirectoryName 'Assembly-CSharp-Editor.rsp'

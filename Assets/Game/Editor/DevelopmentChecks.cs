@@ -40,6 +40,7 @@ namespace EvolvingRPG.Editor
             foreach (var root in SceneManager.GetActiveScene().GetRootGameObjects())
             { if (owner == null) owner = root.GetComponentInChildren<OwnedCharacter>(true); if (hud == null) hud = root.GetComponentInChildren<EnemySandboxHUD>(true); }
             Require(owner != null && owner.State.Knowledge == DiscoveryKnowledge.Revealed && !owner.State.RetaliationLearned && !owner.RetaliationActive, "actual discovery auto-learned/activated");
+            Previews(owner, hud);
             hud.ResetEncounter();
             Require(owner.Purchase(DevelopmentIds.Retaliation, owner.State.Revision) && !owner.RetaliationActive && owner.State.Balance == 0, "actual learning cost/separation invalid");
             Require(owner.ConfigureHeavy(DevelopmentIds.Momentum, true) && owner.RetaliationActive, "owned effect activation failed");
@@ -48,6 +49,40 @@ namespace EvolvingRPG.Editor
             RetaliationChecks.Begin();
         }
         public static void BeforeFresh() => CharacterSaveChecks.NativeRoundtrip();
+        static void Previews(OwnedCharacter owner, EnemySandboxHUD hud)
+        {
+            var actor = owner.GetComponent<CombatActions>(); var stamina = owner.GetComponent<CombatStamina>();
+            var trial = owner.GetComponent<RetaliatoryMomentumTrial>();
+            var baseline = AssetDatabase.LoadAssetAtPath<AttackDefinition>("Assets/Game/Combat/Data/Heavy.asset");
+            var breaker = AssetDatabase.LoadAssetAtPath<AttackDefinition>("Assets/Game/Combat/Data/Techniques/Breaker.asset");
+            var momentum = AssetDatabase.LoadAssetAtPath<AttackDefinition>("Assets/Game/Combat/Data/Techniques/Momentum.asset");
+            var tuned = UnityEngine.Object.Instantiate(breaker);
+            string state = JsonUtility.ToJson(owner.State.Export()); float resource = stamina.Current;
+            var selected = actor.HeavyAttack; int consumed = trial.Consumed, observations = 0;
+            Action<CombatObservation> observe = value => observations++;
+            actor.Observed += observe;
+            try
+            {
+                Require(owner.TryPreviewHeavy(DevelopmentIds.Baseline, out var foundation) && foundation.Damage == baseline.Damage,
+                    "baseline preview not authored from assigned definition");
+                Require(owner.TryPreviewHeavy(DevelopmentIds.Momentum, out var advance) && advance.AdvanceDistance == momentum.AdvanceDistance
+                    && advance.MissRecovery == momentum.MissRecovery, "Momentum preview lost commitment/liability");
+                Require(!owner.TryPreviewHeavy(DevelopmentIds.Retaliation, out _) && !owner.TryPreviewHeavy("", out _)
+                    && !owner.TryPreviewHeavy(null, out _) && !owner.TryPreviewHeavy("future.heavy", out _), "unknown/effect interpreted as base technique");
+                // Runtime clone only: never edit a shared authored asset or save a scene.
+                tuned.Windup = .73f; tuned.PoiseDamage = 71; tuned.StaminaCost = 19;
+                owner.Configure(baseline, tuned, momentum, hud);
+                Require(owner.TryPreviewHeavy(DevelopmentIds.Breaker, out var first) && first.Windup == .73f
+                    && first.PoiseDamage == 71 && first.StaminaCost == 19, "preview uses duplicated tuning constants");
+                tuned.Windup = .91f;
+                Require(first.Windup == .73f && owner.TryPreviewHeavy(DevelopmentIds.Breaker, out var next) && next.Windup == .91f,
+                    "preview not a value snapshot of current authored data");
+                Require(JsonUtility.ToJson(owner.State.Export()) == state && stamina.Current == resource && actor.HeavyAttack == selected
+                    && trial.Consumed == consumed && observations == 0 && !actor.Busy, "inspection changed ownership, resource, action or opportunity consumption");
+            }
+            finally { actor.Observed -= observe; owner.Configure(baseline, breaker, momentum, hud); UnityEngine.Object.DestroyImmediate(tuned); }
+            File.AppendAllText("Logs/DevelopmentChecks.txt", "PASS authored technique previews: assigned data, immutable current snapshots, unknown/effect rejection and no ownership/resource/action/acceptance side effects. Runtime clone only; assets unchanged.\n");
+        }
         public static void Finished()
             => File.AppendAllText("Logs/DevelopmentChecks.txt", "PASS all ownership checks including nine owned native retaliation cases and fresh-character reset.\n");
         static void Require(bool condition, string message) { if (!condition) throw new InvalidOperationException(message); }

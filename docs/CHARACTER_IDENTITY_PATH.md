@@ -16,6 +16,8 @@ The current history set is the smallest durable bridge. Its presence also spends
 
 **Offline preparation status (2026-11-05):** the production state regression harness now validates identity-bound investment, once-only points, protected unknown content, deduplicated history and non-mutating schema migration. This establishes state contracts only. The following three experiments remain the development path; no new active refinement is implemented.
 
+**Current preparation (2026-11-06):** the current twelve-stage Unity regression gate passed, and DevelopmentTest provides sequence-linked Heavy experience explanations retained across R. Technique cards read current base attack definitions, while Recent attacks show the committed result. Use these together to compare intention, commitment, applied outcome and experience policy; neither display infers the player's tactical intent or grants power. These are tools for the same three experiments below, not evidence that a refinement is accepted.
+
 ## 1. Does experience describe competent play fairly?
 
 **Decision:** create an opening with an early Heavy, wait to intercept, or choose Light/movement when Heavy is unsafe. The record should describe what actually happened without encouraging a player to wait for an enemy attack solely to earn progress.

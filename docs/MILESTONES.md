@@ -1,6 +1,6 @@
 # Development milestones
 
-**Current continuous follow-up (2026-11-06):** the pending Unity integration passed all twelve baseline regression stages. DevelopmentTest now retains per-Heavy experience explanations in its session review across R, clearing them on fresh/load. Four model groups and eight native Heavy cases passed; final integration results are tracked in the continued report. This improves inspection of existing V0.4 D, adding no power or economy. Player feedback remains required.
+**Current continuous follow-up (2026-11-06):** the pending Unity integration passed all twelve baseline regression stages. DevelopmentTest now retains per-Heavy experience explanations in its session review across R, clearing them on fresh/load. The final twelve-stage integrated run also passed the new explanation and definition-driven preview checks. Heavy cards read assigned tuning without spending resources or committing actions; no gameplay parameters changed. Exact results are tracked in the continued report. This improves inspection of existing V0.4 D, adding no power or economy. Player feedback remains required.
 
 **Approach:** Validate one mechanic at a time. Each milestone should produce something playable. The vision document is the long-term compass, not the first milestone's scope.
 

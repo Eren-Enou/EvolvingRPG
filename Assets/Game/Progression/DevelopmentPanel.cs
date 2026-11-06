@@ -64,12 +64,17 @@ namespace EvolvingRPG.Progression
             GUILayout.Label("CHARACTER EXPERIENCE / retained facts, not XP or power. " + state.ExperienceCount + " demonstrated. Save explicitly; R retains completed facts.");
             GUILayout.Label(character.Experience.Latest);
             GUILayout.Label("Prototype rule: one Heavy discipline per character; no respec. One point initially; one additional, once-only fixture point on reveal. Compare another fresh character. Not a final economy.");
-            Card(DevelopmentIds.Baseline, "Baseline Heavy: original commitment, 45 damage / 40 poise; no advance.");
-            Card(DevelopmentIds.Breaker, "Breaker: planted 60 poise, 0.65 s windup / 0.85 s recovery; longer exposure. Purchase selects this Heavy.");
-            Card(DevelopmentIds.Momentum, "Momentum: 1.2 m committed advance, 40 damage / 25 poise; +0.55 s miss recovery. Purchase selects this Heavy.");
+            GUILayout.Label("Technique numbers describe base attacks. Contextual return is separate; guard and collision can change results. Recent attacks show the form actually committed.");
+            Card(DevelopmentIds.Baseline, "Baseline Heavy: the shared starting technique; remains learned after specializing.");
+            Card(DevelopmentIds.Breaker, "Breaker: planted disruption with longer exposure. Compare poise and commitment below. Purchase selects this Heavy.");
+            Card(DevelopmentIds.Momentum, "Momentum: committed windup advance with lighter impact and additional miss exposure. Purchase selects this Heavy.");
             if (state.Knowledge == DiscoveryKnowledge.Undiscovered) GUILayout.Label("Further connections emerge through invested combat experience.");
             else if (state.Knowledge == DiscoveryKnowledge.Foreshadowed) GUILayout.Label("Hint: your verified evasions are beginning to shape your advancing strikes.");
-            else Card(DevelopmentIds.Retaliation, "Retaliatory Momentum: after verified evasion, forward intent + RMB adds 0.4 m. +0.25 s recovery unless the linked opponent generation is hit. Learning does not activate it.");
+            else
+            {
+                var effect = character.GetComponent<RetaliatoryMomentumTrial>();
+                Card(DevelopmentIds.Retaliation, $"Retaliatory Momentum: after verified evasion, forward intent + RMB adds {effect.AddedAdvance:0.##} m. +{effect.AddedMissRecovery:0.##} s recovery unless the linked opponent generation is hit. Ordinary miss recovery also applies. Learning does not activate it.");
+            }
             if (GUILayout.Button(confirmFresh ? "Confirm fresh character (unsaved current character replaced)" : "Create fresh experimental character"))
             { if (confirmFresh) { character.FreshCharacter(); preview = null; saveSlot = null; confirmFresh = false; } else confirmFresh = true; }
             foreach (string slot in new[] { "A", "B" })
@@ -96,6 +101,12 @@ namespace EvolvingRPG.Progression
         {
             var state = character.State;
             GUILayout.BeginVertical(GUI.skin.box); GUILayout.Label(description);
+            if (character.TryPreviewHeavy(id, out var attack))
+            {
+                GUILayout.Label($"Authored impact: {attack.Damage:0.#} HP / {attack.PoiseDamage:0.#} poise | stamina {attack.StaminaCost:0.#}.");
+                GUILayout.Label($"Commitment: {attack.Windup:0.00}s windup + {attack.ActiveTime:0.00}s active + {attack.Recovery:0.00}s recovery | miss adds {attack.MissRecovery:0.00}s.");
+                GUILayout.Label($"Reach {attack.Range:0.00}m / {attack.Arc:0.#} deg | windup advance {attack.AdvanceDistance:0.00}m; collision may shorten travel | directional movement {attack.MovementMultiplier:P0}.");
+            }
             if (id != DevelopmentIds.Retaliation && state.Owns(id))
             {
                 string history = "Demonstrated: "; bool any = false;

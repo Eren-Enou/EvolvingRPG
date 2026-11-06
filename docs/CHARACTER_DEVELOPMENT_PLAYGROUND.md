@@ -57,3 +57,9 @@ R retains completed facts and discards pending receipts. Save explicitly to reta
 Use **Run Heavy Experience Checks** (Ctrl+Shift+Alt+F7) for the isolated model and native sequence, including real initiative, interruption, stale target, dummy, guard/interception and A/B save/reload cases. It writes only under Logs. See [Heavy experience rules and retention](HEAVY_EXPERIENCE_HISTORY.md) and [the next character-identity path](CHARACTER_IDENTITY_PATH.md).
 
 **Inspect Heavy Experience Fixture** (Ctrl+Shift+Alt+F6) runs those checks and leaves the genuinely experienced Breaker open at safe spawn for visual inspection. Stop Play afterward; this fixture's saves are isolated under Logs.
+
+## Definition-driven technique inspection (2026-11-06)
+
+Heavy cards read the actual assigned base definitions for damage, poise, stamina, windup/active/recovery, miss recovery, reach/arc, committed windup advance and directional movement multiplier. Retaliatory Momentum's revealed card reads its current component travel/recovery settings. This is an authored base preview, not a prediction of actual guarded damage, collision-limited travel or an armed contextual return. Recent attacks remain the record of what was actually committed and resolved.
+
+Inspection takes a value snapshot without running attack resolvers or acceptance. It does not select a discipline, spend stamina/points, create an action or consume an opportunity. Unowned near-term disciplines can be inspected without granting them. A runtime-clone test verifies tuning changes appear in subsequent previews while previous snapshots remain unchanged; shared attack assets are not edited by the test. No save field or Editor wiring is added.

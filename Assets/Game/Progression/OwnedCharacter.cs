@@ -57,6 +57,14 @@ namespace EvolvingRPG.Progression
         void OnDisable() { inspect.Disable(); CloseMenu(); Review?.Dispose(); Experience?.Dispose(); if (discovery != null && discovery.Ledger != null) discovery.Ledger.Changed -= OnKnowledge; }
         string ExperienceProfile(AttackDefinition definition) => definition == baseline ? DevelopmentIds.Baseline
             : definition == breaker ? DevelopmentIds.Breaker : definition == momentum ? DevelopmentIds.Momentum : null;
+        // Inspection of the authored technique only: no resolvers, acceptance or opportunity consumption.
+        public bool TryPreviewHeavy(string id, out AttackSnapshot preview)
+        {
+            var definition = id == DevelopmentIds.Baseline ? baseline : id == DevelopmentIds.Breaker ? breaker
+                : id == DevelopmentIds.Momentum ? momentum : null;
+            preview = definition != null ? new AttackSnapshot(definition) : default;
+            return definition != null;
+        }
         void OnKnowledge() => State.RecordKnowledge(discovery.Ledger.Exchanges);
         bool SafeOpponents()
         {

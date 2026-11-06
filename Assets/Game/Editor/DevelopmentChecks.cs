@@ -16,8 +16,13 @@ namespace EvolvingRPG.Editor
             Directory.CreateDirectory("Logs"); File.WriteAllText("Logs/DevelopmentChecks.txt", "Character development checks\n");
             var a = new CharacterDevelopmentState(); var b = new CharacterDevelopmentState();
             Require(a.CharacterId != b.CharacterId && a.Balance == 1 && a.Heavy == DevelopmentIds.Baseline, "fresh identity/foundation invalid");
+            Require(!a.Owns("") && !a.Owns(null), "empty identity reported owned");
+            var boundPreview = a.PreviewPurchase(DevelopmentIds.Momentum);
+            Require(!b.Purchase(boundPreview, out _) && b.Revision == 0 && b.Balance == 1, "cross-character preview accepted");
+            Require(!a.Purchase(default(DevelopmentPurchasePreview), out _), "default preview accepted");
             Require(!a.Purchase(DevelopmentIds.Retaliation, 0, out _) && !a.Purchase("", 0, out _) && !a.Configure("", false, out _), "unknown/unrevealed option accepted");
-            Require(a.Purchase(DevelopmentIds.Momentum, 0, out _) && a.Balance == 0 && a.Heavy == DevelopmentIds.Momentum, "choice did not spend/activate");
+            Require(a.Purchase(boundPreview, out _) && a.Balance == 0 && a.Heavy == DevelopmentIds.Momentum, "choice did not spend/activate");
+            Require(!a.Purchase(boundPreview, out _), "bound preview replay accepted");
             Require(!a.Purchase(DevelopmentIds.Momentum, 0, out _) && !a.Purchase(DevelopmentIds.Breaker, a.Revision, out _), "duplicate/competing primary bought");
             a.RecordKnowledge(1); Require(a.Knowledge == DiscoveryKnowledge.Foreshadowed && a.Balance == 0 && !a.RetaliationLearned, "hint granted power");
             int preview = a.Revision; a.RecordKnowledge(3); Require(a.Balance == 1 && !a.Purchase(DevelopmentIds.Retaliation, preview, out _), "reveal grant/stale preview invalid");

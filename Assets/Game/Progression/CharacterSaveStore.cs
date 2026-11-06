@@ -4,23 +4,6 @@ using System.Text;
 using UnityEngine;
 namespace EvolvingRPG.Progression
 {
-    [Serializable]
-    public sealed class CharacterSaveData
-    {
-        public int schemaVersion;
-        public string characterId;
-        public int revision, buildRevision;
-        public string primary, heavy, discoveryId;
-        public int primaryPaid, retaliationPaid, exchanges, grantedPoints, pointBalance;
-        public bool retaliationLearned, retaliationActive;
-        public string[] heavyExperience;
-        internal CharacterSaveData UpgradeLegacyExperience()
-        {
-            var upgraded = (CharacterSaveData)MemberwiseClone();
-            upgraded.schemaVersion = 2; upgraded.heavyExperience = Array.Empty<string>(); return upgraded;
-        }
-    }
-
     // Local explicit safe-boundary saves. Does not serialize Unity objects or encounter state.
     public sealed class CharacterSaveStore
     {

@@ -69,6 +69,11 @@ namespace EvolvingRPG.Progression
             if (!CanDevelop) { Message = "Return to spawn with R and finish recovery before developing."; return false; }
             bool success = State.Purchase(id, revision, out string message); Message = message; if (success) Apply(); return success;
         }
+        public bool Purchase(DevelopmentPurchasePreview preview)
+        {
+            if (!CanDevelop) { Message = "Return to spawn with R and finish recovery before developing."; return false; }
+            bool success = State.Purchase(preview, out string message); Message = message; if (success) Apply(); return success;
+        }
         public bool ConfigureHeavy(string id, bool retaliation)
         {
             if (!CanDevelop) { Message = "Configure only at the safe spawn while ready."; return false; }

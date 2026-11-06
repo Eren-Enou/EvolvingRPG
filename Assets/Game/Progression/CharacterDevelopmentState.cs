@@ -60,7 +60,14 @@ namespace EvolvingRPG.Progression
             heavyExperience.UnionWith(combined); Revision++; // History never changes the committed build.
             return added;
         }
-        public bool Owns(string id) => id == DevelopmentIds.Baseline || id == Primary || id == DevelopmentIds.Retaliation && RetaliationLearned;
+        public bool Owns(string id) => !string.IsNullOrEmpty(id) && (id == DevelopmentIds.Baseline || id == Primary || id == DevelopmentIds.Retaliation && RetaliationLearned);
+        public DevelopmentPurchasePreview PreviewPurchase(string id) => new DevelopmentPurchasePreview(CharacterId, Revision, id);
+        public bool Purchase(DevelopmentPurchasePreview preview, out string message)
+        {
+            if (!string.Equals(preview.CharacterId, CharacterId, StringComparison.Ordinal))
+            { message = "Character changed; inspect this character before confirming an investment."; return false; }
+            return Purchase(preview.DevelopmentId, preview.Revision, out message);
+        }
         public string Eligibility(string id)
         {
             if (!DevelopmentIds.IsKnown(id)) return "Unknown development.";

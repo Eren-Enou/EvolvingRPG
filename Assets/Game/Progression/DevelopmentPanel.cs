@@ -5,8 +5,8 @@ namespace EvolvingRPG.Progression
     public sealed class DevelopmentPanel : MonoBehaviour
     {
         [SerializeField] OwnedCharacter character;
-        string preview;
-        int previewRevision;
+        DevelopmentPurchasePreview? preview;
+        string observedCharacter;
         bool confirmFresh;
         string saveSlot, saveCharacter;
         Vector2 scroll;
@@ -20,7 +20,13 @@ namespace EvolvingRPG.Progression
         void Draw()
         {
             if (character == null || character.State == null) return;
-            var state = character.State; var actions = character.GetComponent<CombatActions>();
+            var state = character.State;
+            if (observedCharacter != state.CharacterId)
+            {
+                observedCharacter = state.CharacterId;
+                preview = null; saveSlot = saveCharacter = null; confirmFresh = false;
+            }
+            var actions = character.GetComponent<CombatActions>();
             if (!character.MenuOpen)
             {
                 GUILayout.BeginArea(new Rect(12, 12, Mathf.Min(760, Screen.width - 24), 185), GUI.skin.box);
@@ -44,8 +50,8 @@ namespace EvolvingRPG.Progression
             GUILayout.Label(character.Message);
             if (preview != null)
             {
-                GUILayout.Label("Confirm spending 1 point on: " + DevelopmentIds.Label(preview) + " (preview revision " + previewRevision + ")");
-                if (GUILayout.Button("Confirm investment")) { character.Purchase(preview, previewRevision); preview = null; }
+                GUILayout.Label("Confirm spending 1 point on: " + DevelopmentIds.Label(preview.Value.DevelopmentId) + " (preview revision " + preview.Value.Revision + ")");
+                if (GUILayout.Button("Confirm investment")) { character.Purchase(preview.Value); preview = null; }
                 if (GUILayout.Button("Cancel preview")) preview = null;
             }
             if (saveSlot != null)
@@ -65,11 +71,11 @@ namespace EvolvingRPG.Progression
             else if (state.Knowledge == DiscoveryKnowledge.Foreshadowed) GUILayout.Label("Hint: your verified evasions are beginning to shape your advancing strikes.");
             else Card(DevelopmentIds.Retaliation, "Retaliatory Momentum: after verified evasion, forward intent + RMB adds 0.4 m. +0.25 s recovery unless the linked opponent generation is hit. Learning does not activate it.");
             if (GUILayout.Button(confirmFresh ? "Confirm fresh character (unsaved current character replaced)" : "Create fresh experimental character"))
-            { if (confirmFresh) { character.FreshCharacter(); confirmFresh = false; preview = saveSlot = null; } else confirmFresh = true; }
+            { if (confirmFresh) { character.FreshCharacter(); preview = null; saveSlot = null; confirmFresh = false; } else confirmFresh = true; }
             foreach (string slot in new[] { "A", "B" })
             {
                 if (GUILayout.Button("Save current character to slot " + slot)) { saveSlot = slot; saveCharacter = state.CharacterId; }
-                if (GUILayout.Button("Load slot " + slot + " (replaces unsaved current character)")) { character.LoadSlot(slot); preview = saveSlot = null; }
+                if (GUILayout.Button("Load slot " + slot + " (replaces unsaved current character)")) { character.LoadSlot(slot); preview = null; saveSlot = null; confirmFresh = false; }
             }
             GUILayout.Label("Local save folder: " + character.SaveLocation);
             if (state.HasUnresolvedContent) GUILayout.Label(state.ContentWarning);
@@ -95,7 +101,7 @@ namespace EvolvingRPG.Progression
             GUILayout.Label(state.Owns(id) ? "Learned" + (state.Heavy == id || id == DevelopmentIds.Retaliation && state.RetaliationActive ? " / Active" : " / Inactive") : state.Eligibility(id));
             if (!state.Owns(id))
             {
-                if (state.Eligibility(id).StartsWith("Available") && GUILayout.Button("Preview investment")) { preview = id; previewRevision = state.Revision; }
+                if (state.Eligibility(id).StartsWith("Available") && GUILayout.Button("Preview investment")) { preview = state.PreviewPurchase(id); }
             }
             else if (id == DevelopmentIds.Retaliation)
             { if (GUILayout.Button(state.RetaliationActive ? "Deactivate return" : "Activate learned return")) character.ConfigureHeavy(DevelopmentIds.Momentum, !state.RetaliationActive); }

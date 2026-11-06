@@ -3,8 +3,6 @@ using UnityEngine;
 
 namespace EvolvingRPG.Combat
 {
-    public enum DiscoveryKnowledge { Undiscovered, Foreshadowed, Revealed }
-
     // One authored session experiment, independent of input, presentation and power ownership.
     public sealed class RetaliationDiscovery
     {

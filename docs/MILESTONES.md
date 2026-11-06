@@ -1,5 +1,7 @@
 # Development milestones
 
+**Combat-trade continuation (2026-11-06):** V0.4 D inspection now distinguishes outgoing impact, received impact during commitment, player stagger/defeat and the interruption cause. A real guarded-opponent fixture contrasts completed and interrupted trades without changing experience policy. PracticeTest's optional F7 review supports the existing F2 recovery comparison. The focused runner has thirteen suites; see the continued report for current run results and remaining player gates. No stamina/combat tuning or save-schema change.
+
 **Current continuous follow-up (2026-11-06):** the pending Unity integration passed all twelve baseline regression stages. DevelopmentTest now retains per-Heavy experience explanations in its session review across R, clearing them on fresh/load. The final twelve-stage integrated run also passed the new explanation and definition-driven preview checks. Heavy cards read assigned tuning without spending resources or committing actions; no gameplay parameters changed. Exact results are tracked in the continued report. This improves inspection of existing V0.4 D, adding no power or economy. Player feedback remains required.
 
 **Approach:** Validate one mechanic at a time. Each milestone should produce something playable. The vision document is the long-term compass, not the first milestone's scope.

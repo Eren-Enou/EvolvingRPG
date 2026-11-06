@@ -19,10 +19,11 @@ namespace EvolvingRPG.Combat
             public readonly bool Staggered, Defeated;
             public readonly CombatPhase? FirstImpactPhase;
             public readonly float BaseRecovery;
+            public readonly string InterruptionReason;
             public Entry(int sequence, AttackSnapshot attack, string linkedOpponent, bool evolved, bool linkedHit,
                 bool interrupted, float duration, float displacement, int contacts, float damage, float poise,
                 bool guarded, bool broken, MeleeMissReason miss, float linkedRecovery,
-                int receivedHits, float damageTaken, float poiseTaken, bool staggered, bool defeated, CombatPhase? firstImpactPhase)
+                int receivedHits, float damageTaken, float poiseTaken, bool staggered, bool defeated, CombatPhase? firstImpactPhase, string interruptionReason)
             {
                 Sequence = sequence; Name = attack.DisplayName; LinkedOpponent = linkedOpponent;
                 Evolved = evolved; LinkedHit = linkedHit; Interrupted = interrupted; Duration = duration;
@@ -34,8 +35,10 @@ namespace EvolvingRPG.Combat
                 ReceivedHits = receivedHits; DamageTaken = damageTaken; PoiseTaken = poiseTaken;
                 Staggered = staggered; Defeated = defeated; FirstImpactPhase = firstImpactPhase;
                 BaseRecovery = attack.Recovery;
+                InterruptionReason = interrupted ? (string.IsNullOrEmpty(interruptionReason) ? "Cause not recorded" : interruptionReason) : "";
             }
             public string Summary => $"#{Sequence} {Name}: {(Interrupted ? "interrupted" : "completed")} in {Duration:0.00}s | {Contacts} contacts, {Damage:0.#} HP / {Poise:0.#} poise applied"
+                + (Interrupted ? " | cause: " + InterruptionReason : "")
                 + (Guarded ? " | guarded" : "") + (PoiseBroken ? " | poise break" : "")
                 + $" | received {ReceivedHits} impacts: {DamageTaken:0.#} HP / {PoiseTaken:0.#} poise during commitment"
                 + (FirstImpactPhase.HasValue ? " (first in " + FirstImpactPhase.Value + ")" : "")
@@ -103,7 +106,7 @@ namespace EvolvingRPG.Combat
                 value.Kind == CombatObservationKind.Interrupted, Mathf.Max(0, value.Time - started),
                 Vector3.ProjectOnPlane(actor.position - start, Vector3.up).magnitude,
                 contacts, damage, poise, guarded, broken, value.MissReason, penalty,
-                receivedHits, damageTaken, poiseTaken, staggered, defeated, firstImpactPhase);
+                receivedHits, damageTaken, poiseTaken, staggered, defeated, firstImpactPhase, value.Reason);
             if (history.Count == 6) history.RemoveAt(0);
             history.Add(entry); pending = -1; context = null;
         }

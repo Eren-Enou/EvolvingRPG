@@ -74,7 +74,7 @@ namespace EvolvingRPG.Combat
         private void OnDisable()
         {
             if (vitality != null) vitality.HitReceived -= OnImpact;
-            if (Busy) Observe(CombatObservationKind.Interrupted);
+            if (Busy) Observe(CombatObservationKind.Interrupted, reason: "Combat action component disabled");
             light.Disable(); heavy.Disable(); dodge.Disable();
             Phase = CombatPhase.Ready;
             CurrentAttack = null;
@@ -137,7 +137,7 @@ namespace EvolvingRPG.Combat
 
         public void Interrupt(string message)
         {
-            if (Busy) Observe(CombatObservationKind.Interrupted);
+            if (Busy) Observe(CombatObservationKind.Interrupted, reason: message);
             Phase = CombatPhase.Ready; CurrentAttack = null; CommittedAttack = default;
             CommittedContext = null; contextTargetHit = false;
             HasCommittedAttack = false; dodging = false; DodgeSpeedThisFrame = 0; PhaseProgress = 0;
@@ -242,13 +242,13 @@ namespace EvolvingRPG.Combat
             Observe(CombatObservationKind.HitResolved, target, resolution);
         }
 
-        private void Observe(CombatObservationKind kind, HitReceiver target = null, HitResolution resolution = default)
+        private void Observe(CombatObservationKind kind, HitReceiver target = null, HitResolution resolution = default, string reason = null)
         {
             var observation = new CombatObservation(AcceptedActions, kind,
                 dodging ? CombatActionKind.Dodge : CombatActionKind.Attack,
                 CurrentAttack, target, resolution, dodging ? 0 : hitTargets.Count,
                 HasCommittedAttack ? CommittedAttack : (AttackSnapshot?)null,
-                kind == CombatObservationKind.Completed && !dodging && hitTargets.Count == 0 ? missReason : MeleeMissReason.None, Phase);
+                kind == CombatObservationKind.Completed && !dodging && hitTargets.Count == 0 ? missReason : MeleeMissReason.None, Phase, reason);
             Diagnostics.Record(observation);
             Observed?.Invoke(observation);
         }

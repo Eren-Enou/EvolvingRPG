@@ -120,6 +120,7 @@ namespace EvolvingRPG.Editor
                         "native trade did not include landed Heavy plus actual recovery impact: " + entry?.Summary);
                     Require(entry.Interrupted == (test == 1) && entry.Staggered == (test == 1) && !entry.Defeated,
                         "fresh versus preloaded poise did not separate completion and interruption");
+                    Require(entry.InterruptionReason == (test == 1 ? "Staggered" : ""), "native trade lost actual interruption cause");
                     Require(owner.State.ExperienceCount == 1 && owner.State.Balance == 1 && owner.State.BuildRevision == 0,
                         "trade changed progression beyond the one completed Baseline contact fact");
                     string explanation = owner.Experience.ExplanationFor(entry.Sequence);

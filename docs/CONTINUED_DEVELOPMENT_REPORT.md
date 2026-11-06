@@ -22,6 +22,31 @@ The thirteen-stage integrated run started 2026-11-06T17:01:24Z and passed every 
 
 Additional changed files: Assets/Game/Combat/EnemySandboxHUD.cs and CombatActionReview.cs, Assets/Game/Editor/PracticePlayModeChecks.cs, docs/HEAVY_PRACTICE_EXPERIMENT.md, CHARACTER_IDENTITY_PATH.md and CHARACTER_DEVELOPMENT_PLAYGROUND.md. No scene asset or production tuning changed. The next small diagnostic improvement is preserving the actual interruption cause rather than only a boolean; final results follow after that slice.
 
+### Final diagnostic slice and verification gate
+
+CombatObservation now retains the actual interruption reason supplied by CombatActions.Interrupt or component disable. Recent attacks show that immutable cause; completed entries have no cause, and legacy synthetic interruptions with no reason say Cause not recorded. Later actions/messages cannot rewrite the earlier record. Snapshot tests cover stagger, defeat, disable, explicit caller reasons and completed-entry isolation. The native trade case checks the actual Staggered cause. This changes reporting only, not interruption behavior.
+
+The subsequent thirteen-stage integrated run verifies this final source state. The run started 2026-11-06T17:05:55Z and passed all thirteen stages with no failure or skip. Reports are preserved under ignored Logs/CombatTradeValidation/FinalWithCauses; current summary is Logs/ExtendedChecks.txt. Each suite runtime capture reported no errors. Compiler output contained no C# errors; existing obsolete-API warnings remain. No historical result is substituted for this run.
+
+### Current controls and manual checks
+
+- DevelopmentTest: existing WASD/Q/E, Space, mouse/wheel, LMB/RMB, Shift and R are unchanged. After a trade, R then Tab and scroll to Recent attacks. Compare dealt/received impact, first incoming phase, committed base recovery, interruption cause and the separate experience explanation. No new Inspector setup or scene rebuild.
+- Saved/stopped Editor: Tools > EvolvingRPG > Inspect Combat Trade Fixture (Ctrl+Shift+Alt+F9) runs real controlled cases and leaves them visible. Inspect Practice Review Fixture (Ctrl+Shift+Alt+F10) runs the older isolated setup and one actual Breaker, then leaves PracticeTest's review visible. Stop Play after either fixture. These are technical fixtures, not physical-player sessions; no user save is written.
+- PracticeTest: F7 shows the new diagnostic review; F1 hides opponent details for more room; Escape releases the cursor for scrolling. World/action input continues normally. Earn the existing trial before comparing F2 off/on, alternate order and matched context. R resets practice but retains session review. Verify physical F7 and the usability of this overlay yourself; automated lifecycle checks and agent rendering inspection do not establish keyboard/feel/accessibility acceptance.
+
+All four slices preserve schema 2 and its migration policy, explicit saves, experience/discovery/ownership/configuration boundaries, attack snapshots, anti-replay rules, attack definitions and stamina. No scenes, prefabs, imported assets, packages or settings were changed. No new active talent, economy, mastery counter, equipment, class or mission system was added. Current code/doc checkpoint identifiers are available in the branch log. Existing deprecated Unity lookup warnings remain; no standalone build, power-loss, accessibility or human balance test was performed.
+
+### Three next goals, with decision gates
+
+1. **Fair account of a trade:** use the two native outcomes and then freely play similar exchanges. Record what the player intended and whether the explanation feels fair. This may justify changing descriptive language or an isolated alternative-credit experiment; it does not authorize silent retroactive rewards or a save-policy change.
+2. **Useful familiarity rather than mandatory repair:** compare the existing F2 treatment using retained committed recovery and incoming impact. Advance only if it creates a recognizable application while leaving a liability. Reject a new owned modifier if it merely fixes a baseline problem or changes a number without changing judgment.
+3. **Use the opening or preserve the exit:** compare the same owned Momentum with return inactive/active across current distance, obstacle and second-threat contexts. Record predicted ending position and deliberate declines. A shorter-return/brace/follow-up talent is not selected; ordinary intent, Light and movement may already express the useful choice.
+
+These are the same narrow player-feedback gates as CHARACTER_IDENTITY_PATH.md, now supported by executable fixtures and better evidence. Technical success is not acceptance of a talent or a verdict that receiving zero damage makes an action safe. No added automated test is intentionally left unexecuted; physical controls, subjective fairness and feel remain manual.
+
+Final visible check: the final trade inspection reran successfully, kept its panel open across frames, and displayed cause: Staggered on the interrupted result beside the completed one. Unity was left stopped on DevelopmentTest. Static protected-path/GUID checks and git diff --check passed. Source changes are all under Assets/Game; fixtures and documentation are explicit, and generated reports remain ignored. No .NET subset rerun is claimed for these Unity-specific changes. Checkpoints: 5e35d52 (incoming evidence), bd0df8f (native comparison), 2d24347 (practice review), followed by the interruption-cause/documentation checkpoint listed in git log and the handoff.
+
+
 ---
 
 ## Current follow-up - verified integration and inspectable experience (2026-11-06)

@@ -143,9 +143,11 @@ namespace EvolvingRPG.Editor
                     "interruption lost or retained active snapshot");
                 actions.enabled = true;
                 Require(review.Count == 2 && review.Latest.Interrupted && review.Latest.Name == "Changed next strike"
-                    && review.Latest.MissRecovery == 0 && review.Latest.LinkedRecovery == 0,
+                    && review.Latest.MissRecovery == 0 && review.Latest.LinkedRecovery == 0
+                    && review.Latest.InterruptionReason == "Combat action component disabled",
                     "interrupted review claimed completed recovery or lost commitment");
-                Require(actions.TryDodge() && !actions.HasCommittedAttack, "dodge inherited attack snapshot");
+                Require(actions.TryDodge() && !actions.HasCommittedAttack
+                    && review.Latest.InterruptionReason == "Combat action component disabled", "dodge inherited attack snapshot or rewrote prior interruption cause");
                 Pass("Next attack captures edits; interruption clears snapshot; dodge has no attack snapshot");
 
                 actions.enabled = false;
@@ -220,6 +222,7 @@ namespace EvolvingRPG.Editor
                     vitality.ReceiveHit(Hit(2, vitality.PoiseThreshold), out _);
                     var interrupted = review.Latest; var records = actions.Diagnostics.Records;
                     Require(interrupted.Interrupted && interrupted.ReceivedHits == 1 && interrupted.DamageTaken == 2
+                        && interrupted.InterruptionReason == "Staggered"
                         && interrupted.PoiseTaken == vitality.PoiseThreshold && interrupted.Staggered && !interrupted.Defeated
                         && interrupted.FirstImpactPhase == CombatPhase.Windup && interrupted.MissRecovery == 0
                         && records[records.Count - 2].Kind == CombatObservationKind.ImpactReceived
@@ -227,14 +230,16 @@ namespace EvolvingRPG.Editor
                         "stagger-causing hit arrived after synchronous interruption or claimed recovery completion");
                     vitality.ResetVitality(); Require(actions.TryAttack(definition), "defeat trade rejected");
                     vitality.ReceiveHit(Hit(999, 0), out _); var defeated = review.Latest;
-                    Require(defeated.Interrupted && defeated.Defeated && defeated.DamageTaken == vitality.MaximumHealth,
+                    Require(defeated.Interrupted && defeated.Defeated && defeated.DamageTaken == vitality.MaximumHealth
+                        && defeated.InterruptionReason == "Defeated - R resets",
                         "defeat review used authored overkill instead of applied health loss");
                     vitality.ResetVitality(); Require(actions.TryDodge(), "trade dodge rejected");
                     vitality.ReceiveHit(Hit(1, 1), out _); actions.Interrupt("trade dodge finished");
                     Require(review.Latest == defeated, "dodge damage contaminated attack review");
                     vitality.ResetVitality(); Require(actions.TryAttack(definition), "zero-impact fixture rejected");
                     vitality.ReceiveHit(Hit(0, 0), out _); actions.Interrupt("zero-impact fixture");
-                    Require(review.Latest.ReceivedHits == 0 && review.Latest.DamageTaken == 0 && !review.Latest.FirstImpactPhase.HasValue,
+                    Require(review.Latest.ReceivedHits == 0 && review.Latest.DamageTaken == 0 && !review.Latest.FirstImpactPhase.HasValue
+                        && review.Latest.InterruptionReason == "zero-impact fixture" && completed.InterruptionReason == "",
                         "zero applied impact reported a trade");
                     Require(actions.Diagnostics.Hits == 1 && actions.Diagnostics.PoiseBreaks == 0,
                         "received impacts counted as outgoing hits or inflicted breaks");

@@ -19,10 +19,11 @@ namespace EvolvingRPG.Combat
         public readonly int TargetsHit;
         public readonly MeleeMissReason MissReason;
         public readonly CombatPhase Phase;
+        public readonly string Reason;
 
         public CombatObservation(int sequence, CombatObservationKind kind, CombatActionKind actionKind,
             AttackDefinition definition, HitReceiver target, HitResolution resolution, int targetsHit,
-            AttackSnapshot? attack = null, MeleeMissReason missReason = MeleeMissReason.None, CombatPhase phase = CombatPhase.Ready)
+            AttackSnapshot? attack = null, MeleeMissReason missReason = MeleeMissReason.None, CombatPhase phase = CombatPhase.Ready, string reason = null)
         {
             ActionSequence = sequence; Kind = kind; ActionKind = actionKind;
             Definition = definition; Target = target; Resolution = resolution;
@@ -30,6 +31,7 @@ namespace EvolvingRPG.Combat
             TargetsHit = targetsHit; Time = UnityEngine.Time.time;
             MissReason = missReason;
             Phase = phase;
+            Reason = reason;
         }
 
         public string Summary
@@ -48,6 +50,8 @@ namespace EvolvingRPG.Combat
                     return $"#{ActionSequence} {name}: completed"
                         + (ActionKind == CombatActionKind.Dodge ? " (evasion unverified)" : TargetsHit == 0
                             ? $" (miss: {MeleeMissFeedback.Describe(MissReason)})" : $" ({TargetsHit} target hit)");
+                if (Kind == CombatObservationKind.Interrupted)
+                    return $"#{ActionSequence} {name}: interrupted" + (string.IsNullOrEmpty(Reason) ? "" : " (" + Reason + ")");
                 return $"#{ActionSequence} {name}: {Kind}";
             }
         }

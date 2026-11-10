@@ -100,6 +100,10 @@ Planning reference: `PROGRESSION_DEVELOPMENT_PATH.md` is aligned with `EVOLVING_
 - Save a character's persistent talents, equipment prototype, and recent discovery flags.
 - Basic enemy-variant persistence, if the encounter adaptation test is already fun.
 
+## V0.6 — The first Warrior journey
+
+RelayOutpost now gives players explicit station prompts, clearer combat and debrief feedback, a choice between two routes through Priority Interdiction, and a practice suggestion tied to their equipped discipline. Native scripted clears cover both contracts as Baseline, Breaker and Momentum, first reward and repeat, plus separate A/B save and experience histories. The test uses the real motor, collision and enemy AI. See [the V0.6 report](V0.6_WARRIOR_JOURNEY_REPORT.md) for build, controls and playtest steps. Test physical input, readability, route preference and contextual Momentum discovery before changing economy or adding another owned evolution.
+
 ## Later
 
 Expanded weapon types (including charging magic attacks), equipment/itemization, content variety, procedural/combined evolutions, co-op feasibility testing, visual polish, extensive worldbuilding.

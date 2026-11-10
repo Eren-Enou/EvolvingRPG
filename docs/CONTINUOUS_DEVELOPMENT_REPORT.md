@@ -1,5 +1,7 @@
 # Continuous development — relay loop checkpoint, 2026-11-06
 
+This is the historical V0.5 checkpoint. See [the V0.6 Warrior Journey report](V0.6_WARRIOR_JOURNEY_REPORT.md) for the newer live route, build and acceptance instructions.
+
 ## Result and evidence
 
 RelayOutpost now connects a compact hub, authored relay arena, completion/failure/abandon, return report, retry, deliberate Heavy specialization and explicit persistence. After the user renewed full computer-control authorization, the scene was generated through the explicit Editor command and **all fourteen Unity regression suites passed**. The Windows development build succeeded and its startup rendered the hub. No second Editor was started, existing comparison scenes were not overwritten, and gameplay feel has not been validated.

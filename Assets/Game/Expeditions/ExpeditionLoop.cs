@@ -18,16 +18,22 @@ namespace EvolvingRPG.Expeditions
         readonly InputAction interact = new InputAction("ExpeditionInteract", InputActionType.Button, "<Keyboard>/f");
         CombatActions actions;
         CombatVitality vitality;
+        CombatStamina stamina;
         RetaliatoryMomentumTrial retaliation;
+        EnemyVitality guardHealth, fastHealth;
         public ExpeditionAttempt Attempt { get; private set; }
         public bool InMission => Attempt != null && Attempt.Phase == ExpeditionPhase.InProgress;
         public bool AllowsDevelopment => !InMission;
         public bool BoardOpen { get; private set; }
-        public string Report { get; private set; } = "Fresh Warrior: restore the relay to earn your first development point. No automatic investment.";
+        public string Report { get; private set; } = "Restore the relay to earn your first development point.";
         public OwnedCharacter Character => character;
         int experienceAtDeployment, exchangesAtDeployment;
         float departedAt;
         Vector2 scroll;
+        bool showDiagnostics;
+        CombatActionReview.Entry lastAttackBeforeDeployment;
+        GUIStyle title, copy;
+        enum Station { None, Board, Development, Save, Arrival, Relay }
         public void Configure(OwnedCharacter owner, EnemySandboxHUD hud, SandboxEnemy guard, SandboxEnemy mobile,
             Transform missionBoard, Transform developer, Transform saves, Transform objective, Transform entry)
         { character = owner; encounter = hud; guarded = guard; fast = mobile; board = missionBoard; development = developer; saveStation = saves; relay = objective; arrival = entry; }
@@ -35,50 +41,56 @@ namespace EvolvingRPG.Expeditions
         {
             if(character == null) character = GetComponent<OwnedCharacter>();
             actions = character.GetComponent<CombatActions>(); vitality = character.GetComponent<CombatVitality>();
+            stamina = character.GetComponent<CombatStamina>();
             retaliation = character.GetComponent<RetaliatoryMomentumTrial>();
         }
         void OnEnable() { interact.Enable(); character.CharacterRecordReplaced += RecordReplaced; }
         void OnDisable() { interact.Disable(); character.CharacterRecordReplaced -= RecordReplaced; }
         void RecordReplaced()
-        { Attempt = null; Report = "Warrior record loaded or created. No mission attempt or temporary opportunity inherited."; }
+        { Attempt = null; Report = "Warrior ready. Choose an expedition at the mission board."; }
         void OnDestroy() => interact.Dispose();
         void Start()
         {
             if(encounter == null || guarded == null || fast == null || board == null || development == null
                 || saveStation == null || relay == null || arrival == null)
             { Debug.LogError("Relay loop authoring references are incomplete. Use the explicit Relay Outpost builder.",this); enabled=false; return; }
+            guardHealth = guarded.GetComponent<EnemyVitality>(); fastHealth = fast.GetComponent<EnemyVitality>();
             encounter.AllowEncounterReset = false;
             guarded.gameObject.SetActive(false); fast.gameObject.SetActive(false);
         }
         bool Near(Transform station) => station != null && Vector3.Distance(character.transform.position, station.position) < interactionRadius;
+        Station NearbyStation => InMission ? (Attempt.ObjectivesReady && Near(relay) ? Station.Relay : Near(arrival) ? Station.Arrival
+            : Near(relay) ? Station.Relay : Station.None)
+            : Near(board) ? Station.Board : Near(development) ? Station.Development : Near(saveStation) ? Station.Save : Station.None;
         void Update()
         {
             if (!character.MenuOpen) BoardOpen = false;
             if (!InMission && (vitality.Defeated || character.transform.position.y < -5))
             {
                 character.CloseMenu(); BoardOpen = false; ResetToHub();
-                Report = "Recovered to the hub. No mission completion or reward was recorded.";
+                Report = "Recovered to the hub. Your Warrior is ready to deploy.";
                 return;
             }
             if (InMission)
             {
                 if (vitality.Defeated || character.transform.position.y < -5) { Return(ExpeditionPhase.Failed); return; }
-                if (guarded.GetComponent<EnemyVitality>().Defeated) Attempt.Defeat(Attempt.Id, "guarded");
-                if (fast.GetComponent<EnemyVitality>().Defeated) Attempt.Defeat(Attempt.Id, "fast");
+                if (guardHealth.Defeated) Attempt.Defeat(Attempt.Id, "guarded");
+                if (fastHealth.Defeated) Attempt.Defeat(Attempt.Id, "fast");
             }
             if (!Application.isFocused || !interact.WasPressedThisFrame() || character.MenuOpen || actions.Busy || vitality.Staggered) return;
-            if (InMission)
+            switch (NearbyStation)
             {
-                if (Near(relay) && Attempt.ObjectivesReady) Return(ExpeditionPhase.Completed);
-                else if (Near(arrival)) Return(ExpeditionPhase.Abandoned);
+                case Station.Relay: if (Attempt.ObjectivesReady) Return(ExpeditionPhase.Completed); break;
+                case Station.Arrival: Return(ExpeditionPhase.Abandoned); break;
+                case Station.Board: OpenBoard(); break;
+                case Station.Development:
+                case Station.Save: character.TryOpenMenu(); break;
             }
-            else if (Near(board)) OpenBoard();
-            else if (Near(development) || Near(saveStation)) character.TryOpenMenu();
         }
         public bool OpenBoard()
         {
             if (InMission || !character.CanDevelop || !character.TryOpenMenu()) return false;
-            BoardOpen = true; return true;
+            BoardOpen = true; scroll = Vector2.zero; return true;
         }
         public bool Deploy(string contract)
         {
@@ -93,8 +105,8 @@ namespace EvolvingRPG.Expeditions
             experienceAtDeployment = character.State.ExperienceCount;
             exchangesAtDeployment = character.State.Exchanges;
             departedAt = Time.time;
+            lastAttackBeforeDeployment = character.Review.Latest;
             Teleport(arrival.position);
-            Report = "Attempt " + Attempt.Id.Substring(0, 8) + ": no mid-mission save. Defeat/abandon gives no completion point; completed experience remains in memory until explicit hub save.";
             return true;
         }
         public bool Return(ExpeditionPhase outcome)
@@ -103,16 +115,25 @@ namespace EvolvingRPG.Expeditions
             if (outcome != ExpeditionPhase.Completed && outcome != ExpeditionPhase.Failed && outcome != ExpeditionPhase.Abandoned) return false;
             if (!Attempt.Finish(Attempt.Id, outcome)) return false;
             // Snapshot retained facts before encounter reset changes session-only diagnostic text.
-            string experienceReport = " Expedition time " + Mathf.Max(0, Time.time-departedAt).ToString("0") + "s; new Heavy experience facts "
-                + Mathf.Max(0, character.State.ExperienceCount-experienceAtDeployment) + "; qualifying evasive exchanges "
-                + Mathf.Max(0, character.State.Exchanges-exchangesAtDeployment) + ". Experience reports observations, not automatic power.";
+            int facts = Mathf.Max(0, character.State.ExperienceCount - experienceAtDeployment);
+            int exchanges = Mathf.Max(0, character.State.Exchanges - exchangesAtDeployment);
+            int elapsed = Mathf.Max(0, Mathf.RoundToInt(Time.time - departedAt));
+            bool playerDefeated = vitality.Defeated;
             actions.Interrupt("Expedition " + outcome);
             ResetToHub();
             guarded.gameObject.SetActive(false); fast.gameObject.SetActive(false);
             bool settled = Attempt.Settle(Attempt.Id, character.State);
-            Report = "Attempt " + Attempt.Id.Substring(0, 8) + " / " + outcome + (settled ? " / settled" : " / settlement refused")
-                + (Attempt.PointAwarded ? ". First relay milestone: +1 development point. Choose Breaker or Momentum deliberately." : ". No development point: only first relay restoration pays; repeat contracts retain combat experience/discovery, not infinite currency.")
-                + experienceReport + " Save explicitly at the hub. Unsaved progress is lost when loading an older record or exiting.";
+            string result = outcome == ExpeditionPhase.Failed ? (playerDefeated ? "Defeated. You recovered at the outpost." : "You fell outside the expedition and recovered at the outpost.")
+                : outcome == ExpeditionPhase.Abandoned ? "Expedition abandoned. You returned safely."
+                : Attempt.Contract == ExpeditionAttempt.Priority ? "Priority fighter eliminated. Relay secured."
+                : "Both defenders defeated. Relay restored.";
+            string reward = !settled ? "Reward could not be recorded for this Warrior."
+                : Attempt.PointAwarded ? "+1 development point. Inspect your Warrior to choose Breaker or Momentum."
+                : outcome != ExpeditionPhase.Completed ? "No completion reward. You can retry from the board."
+                : Attempt.Contract == ExpeditionAttempt.Relay ? "First restoration reward already earned." : "No completion point for this contract.";
+            string learning = facts + (facts == 1 ? " new Heavy experience" : " new Heavy experiences")
+                + (exchanges > 0 ? $" and {exchanges} qualifying evasive {(exchanges == 1 ? "exchange" : "exchanges")}" : "");
+            Report = $"{result}\n{reward}\n{elapsed}s in the field · {learning}. Save at the hub to keep progress.";
             OpenBoard(); return settled;
         }
         void Teleport(Vector3 destination)
@@ -138,49 +159,125 @@ namespace EvolvingRPG.Expeditions
         void OnGUI()
         {
             if (character == null || character.State == null || character.MenuOpen && !BoardOpen) return;
-            bool wrap = GUI.skin.label.wordWrap; GUI.skin.label.wordWrap = true;
-            try
-            {
-                float width = Mathf.Min(730, Screen.width - 24);
-                if (BoardOpen && character.MenuOpen)
-                {
-                    var old = GUI.color; GUI.color = new Color(.07f,.09f,.12f,1); GUI.DrawTexture(new Rect(12,12,width,Screen.height-24),Texture2D.whiteTexture); GUI.color=old;
-                    GUILayout.BeginArea(new Rect(12,12,width,Screen.height-24), GUI.skin.box);
-                    scroll=GUILayout.BeginScrollView(scroll);
-                    GUILayout.Label("RELAY OUTPOST / Warrior " + character.State.CharacterId.Substring(0,8) + " / points " + character.State.Balance);
-                    GUILayout.Label(Report);
-                    GUILayout.Label("ABANDONED RELAY: defeat the guarded and fast defenders, then press F at the blue relay. First completion awards one point per Warrior; replays award none. Defeat returns here with a retry option.");
-                    if (GUILayout.Button("Accept and deploy: restore relay")) Deploy(ExpeditionAttempt.Relay);
-                    GUILayout.Label("PRIORITY INTERDICTION: eliminate the fast opponent and reach the relay; the guarded fighter may be bypassed. No point reward. Same enemy tuning, different objective pressure.");
-                    if (GUILayout.Button("Accept and deploy: priority contract")) Deploy(ExpeditionAttempt.Priority);
-                    if (Attempt != null && GUILayout.Button("Retry previous contract as a NEW attempt")) Deploy(Attempt.Contract);
-                    if (GUILayout.Button("Inspect character / invest / explicit A-B save and load")) BoardOpen=false;
-                    if (GUILayout.Button("Close board / walk in hub")) { character.CloseMenu(); BoardOpen=false; }
-                    GUILayout.Label("WASD/Q/E move, Space jump, mouse/wheel camera, LMB/RMB attack, Shift dodge. F interacts with stations. Tab inspects only near hub spawn. R reset is disabled here; use explicit retry/abandon. No automatic save or load.");
-                    GUILayout.EndScrollView(); GUILayout.EndArea();
-                }
-                else
-                {
-                    GUILayout.BeginArea(new Rect(12,12,width,210), GUI.skin.box);
-                    GUILayout.Label(InMission ? (Attempt.Contract==ExpeditionAttempt.Relay ? "EXPEDITION / Restore the relay" : "EXPEDITION / Priority interdiction") : "RELAY OUTPOST / HUB");
-                    string technique = actions.HasCommittedAttack ? actions.CommittedAttack.DisplayName : DevelopmentIds.Label(character.State.Heavy);
-                    GUILayout.Label("HP " + vitality.Health.ToString("0") + " / " + actions.Phase + " / " + technique + " / points " + character.State.Balance);
-                    if(InMission) GUILayout.Label("Defenders: guarded " + DefenderStatus(guarded) + " / fast " + DefenderStatus(fast));
-                    GUILayout.Label(InMission ? (Attempt.ObjectivesReady ? "Objective ready: reach the blue relay and press F." : Attempt.Contract==ExpeditionAttempt.Relay ? "Defeat both defenders. Then activate the blue relay." : "Eliminate the fast fighter, then reach the blue relay; guarded fighter is optional.") : "F near the gold mission board deploys. F near green development or white save stations inspects your Warrior. Tab also opens development near spawn.");
-                    GUILayout.Label(InMission ? "F at the arrival beacon abandons without reward. Defeat returns to hub. R reset disabled. No mid-mission save." : Report);
-                    GUILayout.Label(retaliation != null && retaliation.OpportunityReady
-                        ? "RETURN " + retaliation.SecondsRemaining.ToString("0.0") + "s | forward + RMB: +" + retaliation.AddedAdvance.ToString("0.##")
-                            + "m | linked-target miss: extra " + retaliation.AddedMissRecovery.ToString("0.##") + "s recovery. Other intent uses ordinary Momentum."
-                        : character.Experience.Latest);
-                    GUILayout.EndArea();
-                }
-            }
-            finally { GUI.skin.label.wordWrap=wrap; }
+            if (Screen.width < 80 || Screen.height < 80) return;
+            copy ??= new GUIStyle(GUI.skin.label) { wordWrap = true };
+            title ??= new GUIStyle(copy) { fontStyle = FontStyle.Bold, fontSize = 16 };
+            if (BoardOpen && character.MenuOpen) DrawBoard();
+            else DrawHud();
         }
-        static string DefenderStatus(SandboxEnemy enemy)
+
+        void DrawBoard()
         {
-            var hp = enemy.GetComponent<EnemyVitality>();
-            return hp.Defeated ? "cleared" : hp.Health.ToString("0") + " HP / " + enemy.Phase;
+            var bounds = new Rect(12, 12, Mathf.Min(500, Screen.width - 24), Screen.height - 24);
+            var color = GUI.color;
+            GUI.color = new Color(.07f, .09f, .12f, 1);
+            GUI.DrawTexture(bounds, Texture2D.whiteTexture);
+            GUI.color = color;
+            GUILayout.BeginArea(bounds, GUI.skin.box);
+            scroll = GUILayout.BeginScrollView(scroll);
+            GUILayout.Label("Relay Outpost · Mission Board", title);
+            GUILayout.Label($"{DevelopmentIds.Label(character.State.Heavy)} · {character.State.Balance} development points", copy);
+            GUILayout.Space(8);
+            GUILayout.Label(Report, copy);
+            if (Attempt?.PointAwarded == true && character.State.Balance > 0)
+            {
+                if (GUILayout.Button("Choose your specialization")) BoardOpen = false;
+            }
+            else if (Attempt != null && Attempt.Outcome != ExpeditionPhase.Completed)
+            {
+                if (GUILayout.Button("Retry " + ContractTitle(Attempt.Contract))) Deploy(Attempt.Contract);
+            }
+            GUILayout.Space(8);
+            GUILayout.Label("Restore Relay", title);
+            GUILayout.Label("Defeat both defenders and activate the blue relay. " + (character.State.RelayMilestone
+                ? "First restoration reward already earned." : "First clear earns one development point."), copy);
+            if (GUILayout.Button("Deploy: Restore Relay")) Deploy(ExpeditionAttempt.Relay);
+            GUILayout.Space(8);
+            GUILayout.Label("Priority Interdiction", title);
+            GUILayout.Label("Defeat the fast fighter and activate the relay. Decide whether to bypass the guarded fighter or remove it first. No completion point.", copy);
+            if (GUILayout.Button("Deploy: Priority Interdiction")) Deploy(ExpeditionAttempt.Priority);
+            GUILayout.Space(8);
+            if (GUILayout.Button("Inspect Warrior / Save and Load")) BoardOpen = false;
+            if (GUILayout.Button("Return to the outpost")) { character.CloseMenu(); BoardOpen = false; }
+            showDiagnostics = GUILayout.Toggle(showDiagnostics, "Show combat diagnostics in the field");
+            GUILayout.Label("WASD move · Q/E strafe · Space jump · Mouse look / wheel zoom\nLMB Light · RMB Heavy · Shift Dodge · F Interact · Tab Inspect", copy);
+            GUILayout.EndScrollView();
+            GUILayout.EndArea();
+        }
+
+        void DrawHud()
+        {
+            GUILayout.BeginArea(new Rect(12, 12, Mathf.Min(430, Screen.width - 24), Screen.height - 24));
+            GUILayout.BeginVertical(GUI.skin.box);
+            GUILayout.Label(InMission ? ContractTitle(Attempt.Contract) : "Relay Outpost", title);
+            if (InMission)
+            {
+                GUILayout.Label(Attempt.ObjectivesReady ? "Activate the blue relay. Go around the center barrier."
+                    : Attempt.Contract == ExpeditionAttempt.Relay ? "Defeat both defenders." : "Defeat the fast fighter. Guarded fighter optional.", copy);
+                GUILayout.Label("Guarded: " + DefenderCue(guarded, guardHealth) + "   ·   Fast: " + DefenderCue(fast, fastHealth), copy);
+                GUILayout.Label($"Health {vitality.Health:0}/{vitality.MaximumHealth:0}   ·   Stamina {stamina.Current:0}/{stamina.Maximum:0}", copy);
+                GUILayout.Label(ActionCue(), copy);
+                if (retaliation != null && retaliation.OpportunityReady)
+                    GUILayout.Label($"Return opening ({retaliation.SecondsRemaining:0.0}s) · Forward + RMB commits to a longer lunge. Miss the linked fighter and recovery lasts longer.", copy);
+            }
+            GUILayout.Label(StationCue(), copy);
+            if (showDiagnostics && InMission)
+            {
+                GUILayout.Space(6);
+                GUILayout.Label($"Guarded HP {guardHealth.Health:0} / poise {guardHealth.Poise:0} · Fast HP {fastHealth.Health:0} / poise {fastHealth.Poise:0}", copy);
+                GUILayout.Label(actions.Message, copy);
+                GUILayout.Label(character.Experience.Latest, copy);
+            }
+            GUILayout.EndVertical();
+            GUILayout.EndArea();
+        }
+
+        string StationCue()
+        {
+            var station = NearbyStation;
+            if (station != Station.None && (actions.Busy || vitality.Staggered)) return "Finish recovering to interact.";
+            switch (station)
+            {
+                case Station.Board: return "F  Open mission board";
+                case Station.Development: return "F  Inspect development";
+                case Station.Save: return "F  Save or load a Warrior";
+                case Station.Arrival: return "F  Abandon and return to outpost";
+                case Station.Relay: return Attempt.ObjectivesReady ? "F  Activate relay and return" : "Relay locked until the objective is complete.";
+                default: return InMission ? "Arrival beacon: abandon if you need to leave." : "Gold: Missions   ·   Green: Development   ·   White: Save / Load";
+            }
+        }
+
+        string ActionCue()
+        {
+            if (vitality.Staggered) return "Staggered · wait to regain control";
+            if (actions.Busy)
+            {
+                string action = actions.HasCommittedAttack ? actions.CommittedAttack.DisplayName : "Dodge";
+                return action + (actions.Phase == CombatPhase.Recovery || actions.Phase == CombatPhase.DodgeRecovery ? " · Recovering"
+                    : actions.Phase == CombatPhase.Windup ? " · Committed" : " · Executing");
+            }
+            var last = character.Review.Latest;
+            string ready = "Ready · RMB " + DevelopmentIds.Label(character.State.Heavy);
+            if (last == null || last == lastAttackBeforeDeployment) return ready;
+            string result = last.Interrupted ? last.Name + " interrupted" : last.PoiseBroken ? "Staggered the opponent"
+                : last.Contacts == 0 ? last.Name + " missed: " + MeleeMissFeedback.Describe(last.MissReason)
+                : last.Guarded ? "Hit a raised guard" : "Hit landed";
+            return ready + "\n" + result;
+        }
+
+        static string ContractTitle(string contract) => contract == ExpeditionAttempt.Priority ? "Priority Interdiction" : "Restore Relay";
+        static string DefenderCue(SandboxEnemy enemy, EnemyVitality hp)
+        {
+            if (hp.Defeated) return "Down";
+            switch (enemy.Phase)
+            {
+                case EnemyPhase.Windup: return "Winding up";
+                case EnemyPhase.Active: return "Striking";
+                case EnemyPhase.Staggered: return "Staggered";
+                case EnemyPhase.Recovery: return "Open";
+                case EnemyPhase.Returning: return "Retreating";
+                default: return enemy.CanGuard ? "Shield raised" : enemy.Phase == EnemyPhase.Approach ? "Closing" : "Waiting";
+            }
         }
     }
 }

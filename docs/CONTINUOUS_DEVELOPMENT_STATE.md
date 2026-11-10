@@ -2,7 +2,8 @@
 
 - V0.6 Warrior Journey starts from `6d82d04` plus the preserved local live-route/reload work, on `development/continuous-playable-rpg`. See [V0.6 report](V0.6_WARRIOR_JOURNEY_REPORT.md) for current results; the V0.5 notes below are historical.
 - Phase 1 checkpoint: native ExpeditionChecks and LiveRelayRouteChecks passed on 2026-11-10. The live route cleared both authored defenders twice, first as Baseline and then as the same reloaded Momentum Warrior. It checked camera following, one-time funding, saved practice, and no inherited mission or action. A separate controlled suite verified focused F input and failure/retry/character-switch paths. Physical controls and subjective playtesting remain open.
-- Next: improve station prompts, battle cues and return reports before changing Priority Interdiction. The November 6 Windows build predates the reload fix; produce a fresh build after the next stable milestone. The prior desktop-control stop remains respected; the focused tests used an explicit command-line Editor process while no other Editor was running.
+- Phase 2 checkpoint: station-specific F prompts, a readable mission HUD, an optional diagnostics toggle, and concise reward/retry debriefs are live in RelayOutpost. The full 15-stage native suite passed on November 10, as did the 11-case offline state harness. Visual readability and feel still require player feedback.
+- Next: give Priority Interdiction a distinct approach and compare the two separately earned specializations in live expeditions. The November 6 Windows build predates the reload fix; produce a fresh build after the next stable milestone. The prior desktop-control stop remains respected; the tests used an explicit command-line Editor process while no other Editor was running.
 
 ## V0.5 history
 

@@ -137,20 +137,81 @@ namespace EvolvingRPG.Editor
             Require(loop.Return(ExpeditionPhase.Abandoned) && owner.LoadSlot("A") && loop.Attempt==null,"final safe-hub reload failed");
             File.AppendAllText(Report,"PASS Two live relay clears; total damage received "+damageTaken.ToString("0.#")
                 +"; Heavy facts "+owner.State.ExperienceCount+"; earned Momentum restored; repeat paid no point. No tuning, health, position or opponent-state overrides.\n");
+
+            yield return ClearPriority(true);
+            int momentumFacts=owner.State.ExperienceCount;
+            Require(owner.SaveSlot("A") && owner.FreshCharacter(),"could not save Momentum and start the comparison Warrior");
+            string breakerId=owner.State.CharacterId;
+            Require(breakerId!=identity && owner.State.Balance==0 && owner.State.ExperienceCount==0 && owner.State.Primary=="",
+                "second Warrior inherited the first Warrior's identity, points, or history");
+            yield return ClearPriority(true);
+            Require(owner.State.Granted==0 && loop.Deploy(ExpeditionAttempt.Relay),"Baseline priority earned funding or could not deploy for restoration");
+            yield return ClearRelay();
+            Require(owner.State.Granted==1 && owner.State.Balance==1 && owner.Purchase(owner.State.PreviewPurchase(DevelopmentIds.Breaker))
+                && owner.State.Balance==0 && owner.SaveSlot("B") && owner.LoadSlot("B"),"second Warrior did not earn and reload the equal-cost Breaker choice");
+            Require(loop.Deploy(ExpeditionAttempt.Relay),"restored Breaker could not deploy for restoration");
+            yield return ClearRelay();
+            Require(!loop.Attempt.PointAwarded && owner.State.Granted==1,"Breaker replay duplicated funding");
+            yield return ClearPriority(false);
+            int breakerFacts=owner.State.ExperienceCount;
+            Require(owner.State.HasExperience(DevelopmentIds.Breaker, HeavyExperienceCatalog.Contact) && owner.SaveSlot("B"),"live Breaker practice did not record/save");
+            Require(owner.LoadSlot("A") && owner.State.CharacterId==identity && owner.State.Primary==DevelopmentIds.Momentum
+                && owner.State.ExperienceCount==momentumFacts && !owner.State.Owns(DevelopmentIds.Breaker)
+                && !owner.State.HasExperience(DevelopmentIds.Breaker, HeavyExperienceCatalog.Contact),"slot A inherited Breaker practice or ownership");
+            Require(owner.LoadSlot("B") && owner.State.CharacterId==breakerId && owner.State.Primary==DevelopmentIds.Breaker
+                && owner.State.ExperienceCount==breakerFacts && !owner.State.Owns(DevelopmentIds.Momentum)
+                && !owner.State.HasExperience(DevelopmentIds.Momentum, HeavyExperienceCatalog.Contact),"slot B inherited Momentum practice or ownership");
+            File.AppendAllText(Report,"PASS Both contracts cleared with Baseline, earned Momentum and earned Breaker; independent A/B ownership and histories restored.\n");
         }
         static IEnumerator ClearRelay()
         {
             yield return .25f;
             CheckCamera();
             yield return Walk(new Vector3(-7,.05f,-3),.5f);
-            SandboxEnemy guard=null,fast=null;
-            foreach(var enemy in UnityEngine.Object.FindObjectsByType<SandboxEnemy>())
-                if(enemy.GuardedArchetype) guard=enemy; else fast=enemy;
-            Require(guard!=null && fast!=null,"authored opponents missing");
+            var (guard,fast)=Defenders();
             yield return Fight(guard);
             yield return Walk(new Vector3(0,.05f,-3),.6f);
             yield return Walk(new Vector3(7,.05f,-2),.6f);
             yield return Fight(fast);
+            yield return CompleteAtRelay();
+        }
+        static IEnumerator ClearPriority(bool wideRoute)
+        {
+            Require(loop.Deploy(ExpeditionAttempt.Priority),"live priority deployment rejected");
+            File.AppendAllText(Report,$"PRIORITY {actor.HeavyAttack.DisplayName} / {(wideRoute ? "wide route" : "center route")}\n");
+            yield return .25f;
+            CheckCamera();
+            var (guard,fast)=Defenders();
+            if(wideRoute)
+            {
+                yield return Walk(new Vector3(10.5f,.05f,-7),.45f);
+                yield return Walk(new Vector3(10.5f,.05f,1),.55f);
+                Require(guard.Phase==EnemyPhase.Idle && fast.Phase!=EnemyPhase.Idle,"wide approach did not isolate the fast fighter");
+            }
+            else
+            {
+                yield return Walk(new Vector3(0,.05f,-4),.45f);
+                Require(guard.Phase!=EnemyPhase.Idle,"center approach did not draw the guard");
+                yield return Fight(guard);
+                yield return Walk(new Vector3(6,.05f,-2),.55f);
+                yield return Walk(new Vector3(7,.05f,0),.55f);
+            }
+            yield return Fight(fast);
+            Require(guard.GetComponent<EnemyVitality>().Defeated!=wideRoute,"priority route used the wrong target order");
+            yield return CompleteAtRelay();
+            Require(!loop.Attempt.PointAwarded && loop.Report.Contains(wideRoute ? "left the center guard standing" : "cleared the center guard"),
+                "priority completion paid a point or reported the wrong route outcome");
+        }
+        static (SandboxEnemy guard,SandboxEnemy fast) Defenders()
+        {
+            SandboxEnemy guard=null,fast=null;
+            foreach(var enemy in UnityEngine.Object.FindObjectsByType<SandboxEnemy>())
+                if(enemy.GuardedArchetype) guard=enemy; else fast=enemy;
+            Require(guard!=null && fast!=null,"authored opponents missing");
+            return (guard,fast);
+        }
+        static IEnumerator CompleteAtRelay()
+        {
             yield return Walk(new Vector3(5,.05f,10),.5f); // Approach relay east of the central obstruction.
             yield return Walk(new Vector3(1.5f,.05f,10),.4f);
             Require(loop.Attempt.ObjectivesReady && loop.Return(ExpeditionPhase.Completed),"walked relay completion rejected");
@@ -185,6 +246,7 @@ namespace EvolvingRPG.Editor
         {
             float started=Time.time;
             var target=enemy.GetComponent<EnemyVitality>(); int dodged=-1,attacks=0,dodges=0;
+            float committedAdvance=0, committedPoise=0, committedRecovery=0;
             while(!target.Defeated)
             {
                 Require(loop.InMission && !vitality.Defeated,"scripted player was defeated; no restart/health override");
@@ -210,7 +272,12 @@ namespace EvolvingRPG.Editor
                 if(opening && offset.magnitude<2.6f && Vector3.Angle(owner.transform.forward,offset)<15)
                 {
                     Intent(Vector3.zero);
-                    if(actor.TryAttack(actor.HeavyAttack)) attacks++;
+                    if(actor.TryAttack(actor.HeavyAttack))
+                    {
+                        attacks++;
+                        var snapshot=actor.CommittedAttack;
+                        committedAdvance=snapshot.AdvanceDistance; committedPoise=snapshot.PoiseDamage; committedRecovery=snapshot.Recovery;
+                    }
                 }
                 else Intent(offset);
                 yield return null;
@@ -219,7 +286,8 @@ namespace EvolvingRPG.Editor
             Intent(Vector3.zero);
             Require(enemy.AttacksStarted>0 && attacks>0 && dodges>0,"fight did not exercise live threat/action decisions");
             File.AppendAllText(Report,"DEFEATED "+enemy.name+" / native Heavies "+attacks+" / dodges "+dodges
-                +" / enemy strikes "+enemy.AttacksStarted+" / player HP "+vitality.Health.ToString("0.#")+"\n");
+                +" / enemy strikes "+enemy.AttacksStarted+" / player HP "+vitality.Health.ToString("0.#")
+                +$" / committed {actor.HeavyAttack.DisplayName}: {committedAdvance:0.##}m advance, {committedPoise:0.#} poise, {committedRecovery:0.##}s base recovery\n");
         }
         static void Require(bool condition,string message) { if(!condition) throw new InvalidOperationException(message); }
     }

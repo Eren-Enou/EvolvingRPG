@@ -15,12 +15,15 @@ namespace EvolvingRPG.Expeditions
         [SerializeField] SandboxEnemy guarded, fast;
         [SerializeField] Transform board, development, saveStation, relay, arrival;
         [SerializeField, Min(.5f)] float interactionRadius = 3f;
+        [SerializeField] Vector3 priorityGuardPost = new Vector3(0, .05f, 1);
+        [SerializeField] Vector3 priorityFastPost = new Vector3(7, .05f, 6);
         readonly InputAction interact = new InputAction("ExpeditionInteract", InputActionType.Button, "<Keyboard>/f");
         CombatActions actions;
         CombatVitality vitality;
         CombatStamina stamina;
         RetaliatoryMomentumTrial retaliation;
         EnemyVitality guardHealth, fastHealth;
+        Vector3 relayGuardPost, relayFastPost;
         public ExpeditionAttempt Attempt { get; private set; }
         public bool InMission => Attempt != null && Attempt.Phase == ExpeditionPhase.InProgress;
         public bool AllowsDevelopment => !InMission;
@@ -55,6 +58,7 @@ namespace EvolvingRPG.Expeditions
                 || saveStation == null || relay == null || arrival == null)
             { Debug.LogError("Relay loop authoring references are incomplete. Use the explicit Relay Outpost builder.",this); enabled=false; return; }
             guardHealth = guarded.GetComponent<EnemyVitality>(); fastHealth = fast.GetComponent<EnemyVitality>();
+            relayGuardPost = guarded.transform.position; relayFastPost = fast.transform.position;
             encounter.AllowEncounterReset = false;
             guarded.gameObject.SetActive(false); fast.gameObject.SetActive(false);
         }
@@ -99,7 +103,9 @@ namespace EvolvingRPG.Expeditions
             character.CloseMenu(); BoardOpen = false;
             ResetToHub();
             guarded.gameObject.SetActive(true); fast.gameObject.SetActive(true);
-            guarded.ResetEnemy(); fast.ResetEnemy();
+            bool priority = contract == ExpeditionAttempt.Priority;
+            guarded.ResetEnemyAt(priority ? priorityGuardPost : relayGuardPost);
+            fast.ResetEnemyAt(priority ? priorityFastPost : relayFastPost);
             Attempt = new ExpeditionAttempt(character.State.CharacterId, contract);
             if (!Attempt.Deploy(Attempt.Id)) return false;
             experienceAtDeployment = character.State.ExperienceCount;
@@ -119,13 +125,15 @@ namespace EvolvingRPG.Expeditions
             int exchanges = Mathf.Max(0, character.State.Exchanges - exchangesAtDeployment);
             int elapsed = Mathf.Max(0, Mathf.RoundToInt(Time.time - departedAt));
             bool playerDefeated = vitality.Defeated;
+            bool guardDefeated = guardHealth.Defeated;
             actions.Interrupt("Expedition " + outcome);
             ResetToHub();
             guarded.gameObject.SetActive(false); fast.gameObject.SetActive(false);
             bool settled = Attempt.Settle(Attempt.Id, character.State);
             string result = outcome == ExpeditionPhase.Failed ? (playerDefeated ? "Defeated. You recovered at the outpost." : "You fell outside the expedition and recovered at the outpost.")
                 : outcome == ExpeditionPhase.Abandoned ? "Expedition abandoned. You returned safely."
-                : Attempt.Contract == ExpeditionAttempt.Priority ? "Priority fighter eliminated. Relay secured."
+                : Attempt.Contract == ExpeditionAttempt.Priority ? "Priority fighter eliminated. Relay secured. "
+                    + (guardDefeated ? "You also cleared the center guard." : "You left the center guard standing.")
                 : "Both defenders defeated. Relay restored.";
             string reward = !settled ? "Reward could not be recorded for this Warrior."
                 : Attempt.PointAwarded ? "+1 development point. Inspect your Warrior to choose Breaker or Momentum."
@@ -194,11 +202,12 @@ namespace EvolvingRPG.Expeditions
             if (GUILayout.Button("Deploy: Restore Relay")) Deploy(ExpeditionAttempt.Relay);
             GUILayout.Space(8);
             GUILayout.Label("Priority Interdiction", title);
-            GUILayout.Label("Defeat the fast fighter and activate the relay. Decide whether to bypass the guarded fighter or remove it first. No completion point.", copy);
+            GUILayout.Label("The guard holds the center lane. Take the wider right lane to try to isolate the fast fighter, or clear the guard first. Defeat the fast fighter and activate the relay. No completion point.", copy);
             if (GUILayout.Button("Deploy: Priority Interdiction")) Deploy(ExpeditionAttempt.Priority);
             GUILayout.Space(8);
             if (GUILayout.Button("Inspect Warrior / Save and Load")) BoardOpen = false;
             if (GUILayout.Button("Return to the outpost")) { character.CloseMenu(); BoardOpen = false; }
+            GUILayout.Label("Save to keep your progress between sessions. Loading an older record replaces unsaved progress.", copy);
             showDiagnostics = GUILayout.Toggle(showDiagnostics, "Show combat diagnostics in the field");
             GUILayout.Label("WASD move · Q/E strafe · Space jump · Mouse look / wheel zoom\nLMB Light · RMB Heavy · Shift Dodge · F Interact · Tab Inspect", copy);
             GUILayout.EndScrollView();

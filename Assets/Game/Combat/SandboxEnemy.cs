@@ -208,6 +208,13 @@ namespace EvolvingRPG.Combat
             Phase = next; elapsed = 0; PhaseProgress = 0;
             if (logTransitions) Debug.Log($"{name}: {next} | {Pattern}", this);
         }
+        // A contract can change the patrol anchor only at deployment, never during a live exchange.
+        public void ResetEnemyAt(Vector3 anchor)
+        {
+            Initialize();
+            home = anchor;
+            ResetEnemy();
+        }
         public void ResetEnemy()
         {
             Initialize();

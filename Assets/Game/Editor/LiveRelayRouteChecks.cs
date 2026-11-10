@@ -162,6 +162,34 @@ namespace EvolvingRPG.Editor
                 && owner.State.ExperienceCount==breakerFacts && !owner.State.Owns(DevelopmentIds.Momentum)
                 && !owner.State.HasExperience(DevelopmentIds.Momentum, HeavyExperienceCatalog.Contact),"slot B inherited Momentum practice or ownership");
             File.AppendAllText(Report,"PASS Both contracts cleared with Baseline, earned Momentum and earned Breaker; independent A/B ownership and histories restored.\n");
+            yield return DefeatAfterPartialClear();
+        }
+        static IEnumerator DefeatAfterPartialClear()
+        {
+            int previousFacts=owner.State.ExperienceCount, previousPoints=owner.State.Balance;
+            Require(loop.Deploy(ExpeditionAttempt.Relay),"live failure deployment rejected");
+            string failedId=loop.Attempt.Id;
+            yield return .25f;
+            yield return Walk(new Vector3(-7,.05f,-3),.5f);
+            var (guard,fast)=Defenders();
+            yield return Fight(guard);
+            Require(!loop.Attempt.ObjectivesReady && !fast.GetComponent<EnemyVitality>().Defeated,"partial clear prematurely completed the objective");
+            yield return Walk(new Vector3(0,.05f,-3),.6f);
+            yield return Walk(new Vector3(7,.05f,-2),.6f);
+            Intent(Vector3.zero);
+            float stop=Time.time+45;
+            while(loop.InMission && Time.time<stop) yield return null;
+            Require(!loop.InMission && loop.Attempt.Outcome==ExpeditionPhase.Failed && !loop.Attempt.PointAwarded && loop.BoardOpen
+                && loop.Report.StartsWith("Defeated") && vitality.Health==vitality.MaximumHealth,
+                "actual enemy strikes did not return the defeated Warrior safely");
+            Require(owner.State.ExperienceCount>=previousFacts && owner.State.Balance==previousPoints && !actor.CommittedContext.HasValue,
+                "defeat lost retained experience, minted points, or kept a temporary action");
+            yield return .25f;
+            CheckCamera();
+            Require(loop.Deploy(ExpeditionAttempt.Relay) && loop.Attempt.Id!=failedId && !loop.Attempt.ObjectivesReady
+                && !guard.GetComponent<EnemyVitality>().Defeated && loop.Return(ExpeditionPhase.Abandoned),
+                "retry inherited defeated defenders or could not abandon at arrival");
+            File.AppendAllText(Report,"PASS Live defeat after defeating the guard; experience retained, no reward or inherited objective; retry and abandon succeeded.\n");
         }
         static IEnumerator ClearRelay()
         {
@@ -247,8 +275,22 @@ namespace EvolvingRPG.Editor
             float started=Time.time;
             var target=enemy.GetComponent<EnemyVitality>(); int dodged=-1,attacks=0,dodges=0;
             float committedAdvance=0, committedPoise=0, committedRecovery=0;
+            var last=owner.Review.Latest;
+            int breaks=0, misses=0, interruptions=0;
+            float displacement=0;
+            void ReadOutcome()
+            {
+                var entry=owner.Review.Latest;
+                if(entry==null || entry==last) return;
+                last=entry;
+                if(entry.PoiseBroken) breaks++;
+                if(entry.Interrupted) interruptions++;
+                else if(entry.Contacts==0) misses++;
+                displacement=Mathf.Max(displacement,entry.Displacement);
+            }
             while(!target.Defeated)
             {
+                ReadOutcome();
                 Require(loop.InMission && !vitality.Defeated,"scripted player was defeated; no restart/health override");
                 Require(enemy.isActiveAndEnabled,"live opponent was disabled");
                 if(Time.time-started>120) throw new TimeoutException("Fight stalled: "+enemy.name+" HP "+target.Health+" / player "+vitality.Health);
@@ -283,11 +325,13 @@ namespace EvolvingRPG.Editor
                 yield return null;
             }
             while(actor.Busy) { Intent(Vector3.zero); yield return null; }
+            ReadOutcome();
             Intent(Vector3.zero);
             Require(enemy.AttacksStarted>0 && attacks>0 && dodges>0,"fight did not exercise live threat/action decisions");
             File.AppendAllText(Report,"DEFEATED "+enemy.name+" / native Heavies "+attacks+" / dodges "+dodges
                 +" / enemy strikes "+enemy.AttacksStarted+" / player HP "+vitality.Health.ToString("0.#")
-                +$" / committed {actor.HeavyAttack.DisplayName}: {committedAdvance:0.##}m advance, {committedPoise:0.#} poise, {committedRecovery:0.##}s base recovery\n");
+                +$" / committed {actor.HeavyAttack.DisplayName}: {committedAdvance:0.##}m advance, {committedPoise:0.#} poise, {committedRecovery:0.##}s base recovery"
+                +$" / observed {breaks} poise breaks, {misses} misses, {interruptions} interruptions, {displacement:0.##}m max net attack movement\n");
         }
         static void Require(bool condition,string message) { if(!condition) throw new InvalidOperationException(message); }
     }

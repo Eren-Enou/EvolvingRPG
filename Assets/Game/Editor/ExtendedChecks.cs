@@ -13,6 +13,7 @@ namespace EvolvingRPG.Editor
     {
         const string Active = "EvolvingRPG.Extended.Active", Stage = "EvolvingRPG.Extended.Stage";
         const string Report = "Logs/ExtendedChecks.txt", Filter = "EvolvingRPG.Extended.Filter";
+        const string CompletePending = "EvolvingRPG.Extended.CompletePending", LaunchPending = "EvolvingRPG.Extended.LaunchPending";
         static readonly string[] Reports = { "CombatPlayModeChecks", "TechniquePlayModeChecks", "EvasionEvidenceChecks", "EnemyPlayModeChecks", "PracticePlayModeChecks", "AttackSnapshotChecks", "DiscoveryChecks", "RetaliationChecks", "DevelopmentChecks", "DevelopmentPanelInputChecks", "StrafingPlayModeChecks", "HeavyExperienceChecks", "CombatTradeChecks", "ExpeditionChecks", "LiveRelayRouteChecks" };
         static readonly string[] Completed = {
             "PASS: no runtime Console errors captured.", "PASS: all motor checks; no runtime Console errors captured.",
@@ -47,6 +48,7 @@ namespace EvolvingRPG.Editor
             Directory.CreateDirectory("Logs");
             File.WriteAllText(Report, "Unity " + Application.unityVersion + " / interactive regression run " + DateTime.UtcNow.ToString("O") + "\n");
             SessionState.SetString(Filter, only ?? "");
+            SessionState.SetBool(CompletePending, false); SessionState.SetBool(LaunchPending, false);
             SessionState.SetInt(Stage, 0); SessionState.SetBool(Active, true); Next();
         }
         static void Next()
@@ -91,8 +93,9 @@ namespace EvolvingRPG.Editor
             if (!SessionState.GetBool(Active, false)) return;
             if (state == PlayModeStateChange.EnteredPlayMode) SessionState.SetBool("EvolvingRPG.Extended.Seen", true);
             if (state != PlayModeStateChange.EnteredEditMode || !SessionState.GetBool("EvolvingRPG.Extended.Seen", false)) return;
-            // Let each suite finish writing its EnteredEditMode teardown result first.
-            EditorApplication.delayCall += CompleteStage;
+            // Consume on the next Editor update, after all teardown callbacks and any scene restore.
+            // A one-shot delayCall can be lost when a suite restores its scene in the same transition.
+            SessionState.SetBool(CompletePending, true);
         }
         static void CompleteStage()
         {
@@ -102,13 +105,19 @@ namespace EvolvingRPG.Editor
             if (!result.Contains(Completed[stage]) || result.Contains("FAIL") || result.Contains("Exception:") || result.Contains("SKIP"))
             { Finish(false, Reports[stage] + ": incomplete, failed or skipped; inspect " + path); return; }
             File.AppendAllText(Report, "PASS " + Reports[stage] + "\n");
-            SessionState.SetInt(Stage, stage + 1); EditorApplication.delayCall += Next;
+            SessionState.SetInt(Stage, stage + 1); SessionState.SetBool(LaunchPending, true);
         }
         static void Tick()
         {
-            if (SessionState.GetBool(Active, false) && DateTime.TryParse(SessionState.GetString("EvolvingRPG.Extended.Start", ""), out var start)
+            if (!SessionState.GetBool(Active, false)) return;
+            if (DateTime.TryParse(SessionState.GetString("EvolvingRPG.Extended.Start", ""), out var start)
                 && (DateTime.UtcNow - start.ToUniversalTime()).TotalSeconds > 240)
-            { Finish(false, "Stage timed out; inspect individual report."); if (EditorApplication.isPlaying) EditorApplication.ExitPlaymode(); }
+            { Finish(false, "Stage timed out; inspect individual report."); if (EditorApplication.isPlaying) EditorApplication.ExitPlaymode(); return; }
+            if (EditorApplication.isPlayingOrWillChangePlaymode) return;
+            if (SessionState.GetBool(CompletePending, false))
+            { SessionState.SetBool(CompletePending, false); CompleteStage(); }
+            else if (SessionState.GetBool(LaunchPending, false))
+            { SessionState.SetBool(LaunchPending, false); Next(); }
         }
         static void Finish(bool passed, string message)
         {

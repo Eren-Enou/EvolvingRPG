@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using EvolvingRPG.Combat;
 using EvolvingRPG.Progression;
 using UnityEngine;
@@ -30,7 +32,8 @@ namespace EvolvingRPG.Expeditions
         public bool BoardOpen { get; private set; }
         public string Report { get; private set; } = "Restore the relay to earn your first development point.";
         public OwnedCharacter Character => character;
-        int experienceAtDeployment, exchangesAtDeployment;
+        string[] experienceAtDeployment;
+        int exchangesAtDeployment;
         float departedAt;
         Vector2 scroll;
         bool showDiagnostics;
@@ -108,7 +111,7 @@ namespace EvolvingRPG.Expeditions
             fast.ResetEnemyAt(priority ? priorityFastPost : relayFastPost);
             Attempt = new ExpeditionAttempt(character.State.CharacterId, contract);
             if (!Attempt.Deploy(Attempt.Id)) return false;
-            experienceAtDeployment = character.State.ExperienceCount;
+            experienceAtDeployment = character.State.ExperienceFacts;
             exchangesAtDeployment = character.State.Exchanges;
             departedAt = Time.time;
             lastAttackBeforeDeployment = character.Review.Latest;
@@ -121,8 +124,14 @@ namespace EvolvingRPG.Expeditions
             if (outcome != ExpeditionPhase.Completed && outcome != ExpeditionPhase.Failed && outcome != ExpeditionPhase.Abandoned) return false;
             if (!Attempt.Finish(Attempt.Id, outcome)) return false;
             // Snapshot retained facts before encounter reset changes session-only diagnostic text.
-            int facts = Mathf.Max(0, character.State.ExperienceCount - experienceAtDeployment);
             int exchanges = Mathf.Max(0, character.State.Exchanges - exchangesAtDeployment);
+            var newFacts = new List<string>();
+            string profile = character.State.Heavy;
+            foreach (string fact in HeavyExperienceCatalog.Outcomes)
+            {
+                if (character.State.HasExperience(profile, fact) && Array.IndexOf(experienceAtDeployment, HeavyExperienceCatalog.Id(profile, fact)) < 0)
+                    newFacts.Add(HeavyExperienceCatalog.Label(fact));
+            }
             int elapsed = Mathf.Max(0, Mathf.RoundToInt(Time.time - departedAt));
             bool playerDefeated = vitality.Defeated;
             bool guardDefeated = guardHealth.Defeated;
@@ -139,9 +148,11 @@ namespace EvolvingRPG.Expeditions
                 : Attempt.PointAwarded ? "+1 development point. Inspect your Warrior to choose Breaker or Momentum."
                 : outcome != ExpeditionPhase.Completed ? "No completion reward. You can retry from the board."
                 : Attempt.Contract == ExpeditionAttempt.Relay ? "First restoration reward already earned." : "No completion point for this contract.";
-            string learning = facts + (facts == 1 ? " new Heavy experience" : " new Heavy experiences")
-                + (exchanges > 0 ? $" and {exchanges} qualifying evasive {(exchanges == 1 ? "exchange" : "exchanges")}" : "");
-            Report = $"{result}\n{reward}\n{elapsed}s in the field · {learning}. Save at the hub to keep progress.";
+            string learning = newFacts.Count == 0 ? "No new Heavy experience this trip." : "New Heavy experience: " + string.Join(", ", newFacts) + ".";
+            if (exchanges > 0) learning += character.State.Knowledge == DiscoveryKnowledge.Revealed
+                ? " Your Warrior discovered a new Momentum application. Inspect development to learn it."
+                : " Your evasive movement is starting to shape your advancing strikes.";
+            Report = $"{result}\n{reward}\n{elapsed}s in the field · {learning}";
             OpenBoard(); return settled;
         }
         void Teleport(Vector3 destination)
@@ -205,6 +216,8 @@ namespace EvolvingRPG.Expeditions
             GUILayout.Label("The guard holds the center lane. Take the wider right lane to try to isolate the fast fighter, or clear the guard first. Defeat the fast fighter and activate the relay. No completion point.", copy);
             if (GUILayout.Button("Deploy: Priority Interdiction")) Deploy(ExpeditionAttempt.Priority);
             GUILayout.Space(8);
+            string practice = NextPractice();
+            if (practice != null) GUILayout.Label(practice, copy);
             if (GUILayout.Button("Inspect Warrior / Save and Load")) BoardOpen = false;
             if (GUILayout.Button("Return to the outpost")) { character.CloseMenu(); BoardOpen = false; }
             GUILayout.Label("Save to keep your progress between sessions. Loading an older record replaces unsaved progress.", copy);
@@ -212,6 +225,20 @@ namespace EvolvingRPG.Expeditions
             GUILayout.Label("WASD move · Q/E strafe · Space jump · Mouse look / wheel zoom\nLMB Light · RMB Heavy · Shift Dodge · F Interact · Tab Inspect", copy);
             GUILayout.EndScrollView();
             GUILayout.EndArea();
+        }
+
+        string NextPractice()
+        {
+            var state = character.State;
+            if (state.Heavy == DevelopmentIds.Breaker)
+                return state.HasExperience(DevelopmentIds.Breaker, HeavyExperienceCatalog.GuardBreak)
+                    ? "Breaker practice: try the center route. Use Light or step away when the opening is too short for a planted Heavy."
+                    : "Breaker practice: look for a safe opening to commit your planted Heavy against the guard.";
+            if (state.Heavy != DevelopmentIds.Momentum) return null;
+            if (state.RetaliationActive) return "Momentum practice: use the longer return when the lane is clear. Keep ordinary Momentum or reposition when the lunge would leave you exposed.";
+            if (state.RetaliationLearned) return "Your learned return is inactive. Inspect your Warrior to equip it for the next expedition.";
+            if (state.Knowledge == DiscoveryKnowledge.Revealed) return "A new Momentum application is available to learn in development.";
+            return "Momentum practice: try the wide lane. Evade a committed strike, then see whether you can return to the same fighter with your advancing Heavy.";
         }
 
         void DrawHud()
@@ -245,6 +272,7 @@ namespace EvolvingRPG.Expeditions
         {
             var station = NearbyStation;
             if (station != Station.None && (actions.Busy || vitality.Staggered)) return "Finish recovering to interact.";
+            if (!InMission && station != Station.None && !character.CanDevelop) return "Step toward the outpost center to interact.";
             switch (station)
             {
                 case Station.Board: return "F  Open mission board";

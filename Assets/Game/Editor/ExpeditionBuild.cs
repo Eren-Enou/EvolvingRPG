@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using UnityEditor;
 using UnityEditor.Build.Reporting;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -9,6 +10,15 @@ namespace EvolvingRPG.Editor
 {
     public static class ExpeditionBuild
     {
+        // Explicit entry for a dedicated batch process. It opens only the already authored scene.
+        public static void BuildFromCommandLine()
+        {
+            if (!Application.isBatchMode) throw new InvalidOperationException("Use the build menu from an existing Editor.");
+            if (!File.Exists(ExpeditionSceneBuilder.ScenePath)) throw new FileNotFoundException("Author RelayOutpost before building.", ExpeditionSceneBuilder.ScenePath);
+            EditorSceneManager.OpenScene(ExpeditionSceneBuilder.ScenePath);
+            Build();
+        }
+
         [MenuItem("Tools/EvolvingRPG/Build Relay Windows Development Player")]
         public static void Build()
         {

@@ -1,6 +1,14 @@
 # Instructions to Codex / coding agents
 
+## Active V0.6 assignment — 2026-11-10
+
+The Warrior Journey brief supersedes the older milestone assignments below. Continue on `development/continuous-playable-rpg`; keep main unchanged. Read `docs/CONTINUOUS_DEVELOPMENT_STATE.md` and `docs/V0.6_WARRIOR_JOURNEY_REPORT.md` for current evidence and next work. Prove the relay journey, improve the existing hub and combat presentation, then compare both contracts and equally funded Warriors before changing progression. Do not add an owned evolution without evidence of a missing tactical choice.
+
+Respect the previous desktop-control stop. The new brief authorizes explicit native technical checks; use the saved, stopped Unity Editor with the user's cooperation, or the documented command-line test process when no Unity Editor is open. Do not use desktop input, touch personal saves, replace unsaved editing context, or open another instance against the project. Scripted results do not establish physical controls, readability or feel.
+
 ## Active continuation — 2026-11-06
+
+Historical baseline; the V0.6 assignment above takes precedence.
 
 **Current authorization:** the user explicitly changed this goal to allow full computer control on 2026-11-06. This supersedes the earlier no-computer-control preference and historical Escape stop below. Resume explicit verification in the existing Unity Editor. Preserve unsaved edits, use isolated test saves, and never start a second Editor against the same project. A new physical stop must still be respected.
 

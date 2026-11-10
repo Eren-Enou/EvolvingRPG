@@ -32,6 +32,8 @@ namespace EvolvingRPG.Progression
         public string SaveLocation => saves?.Location;
         readonly InputAction inspect = new InputAction("InspectDevelopment", InputActionType.Button, "<Keyboard>/tab");
         public CharacterDevelopmentState State { get; private set; }
+        // A load replaces the record even when its stable character ID is unchanged.
+        public event System.Action CharacterRecordReplaced;
         public CombatActionReview Review { get; private set; }
         public HeavyExperienceCollector Experience { get; private set; }
         public string Message { get; private set; } = "One experimental point: inspect Breaker or Momentum with Tab at spawn.";
@@ -106,7 +108,8 @@ namespace EvolvingRPG.Progression
             State = new CharacterDevelopmentState(initialFixturePoints); discovery.RestoreCharacterKnowledge(0); Apply();
             Review.Clear();
             Experience.ReplaceCharacter();
-            Message = "Fresh character: no knowledge, purchases or active evolution. Unsaved previous character was replaced."; return true;
+            Message = "Fresh character: no knowledge, purchases or active evolution. Unsaved previous character was replaced.";
+            CharacterRecordReplaced?.Invoke(); return true;
         }
         #if UNITY_EDITOR
         public void UseTestSaveDirectory(string path) => saves = new CharacterSaveStore(path);
@@ -124,7 +127,8 @@ namespace EvolvingRPG.Progression
             encounter.ResetEncounter(); State = loaded;
             Review.Clear();
             Experience.ReplaceCharacter();
-            discovery.RestoreCharacterKnowledge(State.Exchanges); Apply(); Message = message; return true;
+            discovery.RestoreCharacterKnowledge(State.Exchanges); Apply(); Message = message;
+            CharacterRecordReplaced?.Invoke(); return true;
         }
         void Apply()
         {

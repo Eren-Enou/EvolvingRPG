@@ -12,8 +12,8 @@ namespace EvolvingRPG.Editor
     public static class ExtendedChecks
     {
         const string Active = "EvolvingRPG.Extended.Active", Stage = "EvolvingRPG.Extended.Stage";
-        const string Report = "Logs/ExtendedChecks.txt";
-        static readonly string[] Reports = { "CombatPlayModeChecks", "TechniquePlayModeChecks", "EvasionEvidenceChecks", "EnemyPlayModeChecks", "PracticePlayModeChecks", "AttackSnapshotChecks", "DiscoveryChecks", "RetaliationChecks", "DevelopmentChecks", "DevelopmentPanelInputChecks", "StrafingPlayModeChecks", "HeavyExperienceChecks", "CombatTradeChecks", "ExpeditionChecks" };
+        const string Report = "Logs/ExtendedChecks.txt", Filter = "EvolvingRPG.Extended.Filter";
+        static readonly string[] Reports = { "CombatPlayModeChecks", "TechniquePlayModeChecks", "EvasionEvidenceChecks", "EnemyPlayModeChecks", "PracticePlayModeChecks", "AttackSnapshotChecks", "DiscoveryChecks", "RetaliationChecks", "DevelopmentChecks", "DevelopmentPanelInputChecks", "StrafingPlayModeChecks", "HeavyExperienceChecks", "CombatTradeChecks", "ExpeditionChecks", "LiveRelayRouteChecks" };
         static readonly string[] Completed = {
             "PASS: no runtime Console errors captured.", "PASS: all motor checks; no runtime Console errors captured.",
             "PASS all C1 checks; no runtime Console errors captured.", "PASS: live smoke; no runtime Console errors captured.",
@@ -22,11 +22,15 @@ namespace EvolvingRPG.Editor
             "PASS all ownership checks including nine owned native retaliation cases and fresh-character reset.",
             "PASS Exit Play mode with panel open: no runtime teardown errors.", "PASS: no runtime Console errors captured.",
             "PASS All Heavy experience model/native checks; no runtime Console errors.", "PASS All combat trade checks; no runtime Console errors.",
-            "PASS All relay native checks including teardown; no runtime Console errors." };
+            "PASS All relay native checks including teardown; no runtime Console errors.",
+            "PASS Live route and progression roundtrip; no runtime/teardown errors." };
         static ExtendedChecks() { EditorApplication.playModeStateChanged += Changed; EditorApplication.update += Tick; }
 
+        public static bool Running => SessionState.GetBool(Active, false);
         [MenuItem("Tools/EvolvingRPG/Run Extended Regression Checks %#F11")]
-        public static void Run()
+        public static void Run() => RunStages(null);
+        // Optional comma-separated stage filter for focused automation; null runs every stage.
+        public static void RunStages(string only)
         {
             if (Application.isBatchMode || EditorApplication.isPlayingOrWillChangePlaymode || SessionState.GetBool(Active, false))
                 throw new InvalidOperationException("Use a stopped interactive Editor with no check already running.");
@@ -35,14 +39,22 @@ namespace EvolvingRPG.Editor
             for (int i = 0; i < SceneManager.sceneCount; i++)
                 if (SceneManager.GetSceneAt(i).isDirty || string.IsNullOrEmpty(SceneManager.GetSceneAt(i).path))
                     throw new InvalidOperationException("Save scene edits before running extended checks.");
+            if (only != null)
+                foreach (string value in only.Split(','))
+                    if (!int.TryParse(value, out int index) || index < 0 || index >= Reports.Length || index.ToString() != value)
+                        throw new ArgumentException("Invalid regression stage: " + value, nameof(only));
             SessionState.SetString("EvolvingRPG.Extended.Scene", SceneManager.GetActiveScene().path);
             Directory.CreateDirectory("Logs");
             File.WriteAllText(Report, "Unity " + Application.unityVersion + " / interactive regression run " + DateTime.UtcNow.ToString("O") + "\n");
+            SessionState.SetString(Filter, only ?? "");
             SessionState.SetInt(Stage, 0); SessionState.SetBool(Active, true); Next();
         }
         static void Next()
         {
             int stage = SessionState.GetInt(Stage, 0);
+            string only = SessionState.GetString(Filter, "");
+            while (stage < Reports.Length && only.Length > 0 && Array.IndexOf(only.Split(','), stage.ToString()) < 0) stage++;
+            SessionState.SetInt(Stage, stage);
             if (stage == Reports.Length) { Finish(true, "All requested stages passed. Technical checks do not validate feel."); return; }
             SessionState.SetBool("EvolvingRPG.Extended.Seen", false);
             SessionState.SetString("EvolvingRPG.Extended.Start", DateTime.UtcNow.ToString("O"));
@@ -69,6 +81,7 @@ namespace EvolvingRPG.Editor
                     case 11: HeavyExperienceChecks.Run(); break;
                     case 12: CombatTradeChecks.Run(); break;
                     case 13: ExpeditionChecks.Run(); break;
+                    case 14: LiveRelayRouteChecks.Run(); break;
                 }
             }
             catch (Exception e) { Finish(false, e.ToString()); }

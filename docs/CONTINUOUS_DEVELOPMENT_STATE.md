@@ -1,4 +1,10 @@
-# Continuous development state — 2026-11-06
+# Continuous development state — 2026-11-10
+
+- V0.6 Warrior Journey starts from `6d82d04` plus the preserved local live-route/reload work, on `development/continuous-playable-rpg`. See [V0.6 report](V0.6_WARRIOR_JOURNEY_REPORT.md) for current results; the V0.5 notes below are historical.
+- Phase 1 checkpoint: native ExpeditionChecks and LiveRelayRouteChecks passed on 2026-11-10. The live route cleared both authored defenders twice, first as Baseline and then as the same reloaded Momentum Warrior. It checked camera following, one-time funding, saved practice, and no inherited mission or action. A separate controlled suite verified focused F input and failure/retry/character-switch paths. Physical controls and subjective playtesting remain open.
+- Next: improve station prompts, battle cues and return reports before changing Priority Interdiction. The November 6 Windows build predates the reload fix; produce a fresh build after the next stable milestone. The prior desktop-control stop remains respected; the focused tests used an explicit command-line Editor process while no other Editor was running.
+
+## V0.5 history
 
 - Branch: development/continuous-playable-rpg, from consolidated baseline 8baacc1. Prior named branches/main are ancestors; main unchanged. Source checkpoints through 010e928, authorization e2250e2. Read CONTINUOUS_DEVELOPMENT_REPORT.md for exact implementation/files and limits.
 - Current authorization: full computer control explicitly renewed by user; earlier no-control preference is superseded. Preserve unsaved edits and personal saves; never start another Editor against this project. Current existing Editor was used exclusively.

@@ -171,9 +171,16 @@ namespace EvolvingRPG.Editor
             int completedFacts=owner.State.ExperienceCount, completedExchanges=owner.State.Exchanges;
             Require(!loop.Return(ExpeditionPhase.Completed),"completion ignored relay proximity");
             Place(owner.gameObject,relay.position+Vector3.back*1.5f);
+            yield return null; // Let the motor and the Input System see the new interaction position first.
+            Pass($"Relay interaction preflight: focus={Application.isFocused} phase={actor.Phase} blocked={actor.MovementBlocked} "
+                +$"distance={Vector3.Distance(owner.transform.position,relay.position):0.00} ready={loop.Attempt.ObjectivesReady} "
+                +$"action={testInteraction.enabled}/{testInteraction.controls.Count} keyboard={testKeyboard.enabled}.");
             InputSystem.QueueStateEvent(testKeyboard,new KeyboardState(Key.F)); yield return .05f;
+            bool pressed=testKeyboard.fKey.isPressed;
             InputSystem.QueueStateEvent(testKeyboard,new KeyboardState()); yield return .05f;
-            Require(!loop.InMission && loop.BoardOpen && owner.CanDevelop,"focused native F completion did not return to safe hub report");
+            Require(!loop.InMission && loop.BoardOpen && owner.CanDevelop,
+                $"focused native F completion did not return to safe hub report: pressed={pressed} focus={Application.isFocused} "
+                +$"phase={actor.Phase} attempt={loop.Attempt?.Phase} board={loop.BoardOpen} safe={owner.CanDevelop} position={owner.transform.position}");
             Require(owner.State.ExperienceCount==completedFacts && owner.State.Exchanges==completedExchanges
                 && owner.GetComponent<EvasionEvidence>().Pending==null
                 && !owner.GetComponent<RetaliatoryMomentumTrial>().Opportunity.HasValue && !actor.CommittedContext.HasValue,

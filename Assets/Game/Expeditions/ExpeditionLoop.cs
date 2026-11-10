@@ -18,13 +18,13 @@ namespace EvolvingRPG.Expeditions
         readonly InputAction interact = new InputAction("ExpeditionInteract", InputActionType.Button, "<Keyboard>/f");
         CombatActions actions;
         CombatVitality vitality;
+        RetaliatoryMomentumTrial retaliation;
         public ExpeditionAttempt Attempt { get; private set; }
         public bool InMission => Attempt != null && Attempt.Phase == ExpeditionPhase.InProgress;
         public bool AllowsDevelopment => !InMission;
         public bool BoardOpen { get; private set; }
         public string Report { get; private set; } = "Fresh Warrior: restore the relay to earn your first development point. No automatic investment.";
         public OwnedCharacter Character => character;
-        string observedCharacter;
         int experienceAtDeployment, exchangesAtDeployment;
         float departedAt;
         Vector2 scroll;
@@ -35,9 +35,12 @@ namespace EvolvingRPG.Expeditions
         {
             if(character == null) character = GetComponent<OwnedCharacter>();
             actions = character.GetComponent<CombatActions>(); vitality = character.GetComponent<CombatVitality>();
+            retaliation = character.GetComponent<RetaliatoryMomentumTrial>();
         }
-        void OnEnable() => interact.Enable();
-        void OnDisable() => interact.Disable();
+        void OnEnable() { interact.Enable(); character.CharacterRecordReplaced += RecordReplaced; }
+        void OnDisable() { interact.Disable(); character.CharacterRecordReplaced -= RecordReplaced; }
+        void RecordReplaced()
+        { Attempt = null; Report = "Warrior record loaded or created. No mission attempt or temporary opportunity inherited."; }
         void OnDestroy() => interact.Dispose();
         void Start()
         {
@@ -46,13 +49,10 @@ namespace EvolvingRPG.Expeditions
             { Debug.LogError("Relay loop authoring references are incomplete. Use the explicit Relay Outpost builder.",this); enabled=false; return; }
             encounter.AllowEncounterReset = false;
             guarded.gameObject.SetActive(false); fast.gameObject.SetActive(false);
-            observedCharacter = character.State.CharacterId;
         }
         bool Near(Transform station) => station != null && Vector3.Distance(character.transform.position, station.position) < interactionRadius;
         void Update()
         {
-            if (observedCharacter != character.State.CharacterId)
-            { observedCharacter = character.State.CharacterId; Attempt = null; Report = "Different Warrior loaded or created. No mission attempt or temporary opportunity inherited."; }
             if (!character.MenuOpen) BoardOpen = false;
             if (!InMission && (vitality.Defeated || character.transform.position.y < -5))
             {
@@ -163,11 +163,15 @@ namespace EvolvingRPG.Expeditions
                 {
                     GUILayout.BeginArea(new Rect(12,12,width,210), GUI.skin.box);
                     GUILayout.Label(InMission ? (Attempt.Contract==ExpeditionAttempt.Relay ? "EXPEDITION / Restore the relay" : "EXPEDITION / Priority interdiction") : "RELAY OUTPOST / HUB");
-                    GUILayout.Label("HP " + vitality.Health.ToString("0") + " / " + actions.Phase + " / " + character.State.Heavy + " / points " + character.State.Balance);
+                    string technique = actions.HasCommittedAttack ? actions.CommittedAttack.DisplayName : DevelopmentIds.Label(character.State.Heavy);
+                    GUILayout.Label("HP " + vitality.Health.ToString("0") + " / " + actions.Phase + " / " + technique + " / points " + character.State.Balance);
                     if(InMission) GUILayout.Label("Defenders: guarded " + DefenderStatus(guarded) + " / fast " + DefenderStatus(fast));
                     GUILayout.Label(InMission ? (Attempt.ObjectivesReady ? "Objective ready: reach the blue relay and press F." : Attempt.Contract==ExpeditionAttempt.Relay ? "Defeat both defenders. Then activate the blue relay." : "Eliminate the fast fighter, then reach the blue relay; guarded fighter is optional.") : "F near the gold mission board deploys. F near green development or white save stations inspects your Warrior. Tab also opens development near spawn.");
                     GUILayout.Label(InMission ? "F at the arrival beacon abandons without reward. Defeat returns to hub. R reset disabled. No mid-mission save." : Report);
-                    GUILayout.Label(character.Experience.Latest);
+                    GUILayout.Label(retaliation != null && retaliation.OpportunityReady
+                        ? "RETURN " + retaliation.SecondsRemaining.ToString("0.0") + "s | forward + RMB: +" + retaliation.AddedAdvance.ToString("0.##")
+                            + "m | linked-target miss: extra " + retaliation.AddedMissRecovery.ToString("0.##") + "s recovery. Other intent uses ordinary Momentum."
+                        : character.Experience.Latest);
                     GUILayout.EndArea();
                 }
             }

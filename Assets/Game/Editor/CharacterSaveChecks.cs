@@ -87,6 +87,42 @@ namespace EvolvingRPG.Editor
             Pass("Missing definition retained/inactive with protected original; inconsistent economy/configuration, slot traversal and failed I/O reject safely");
             MissionEconomy(root);
             SlotPreviews(root, a, b);
+            LockedRecords(root, a, b);
+        }
+        static void LockedRecords(string root, CharacterDevelopmentState momentum, CharacterDevelopmentState breaker)
+        {
+            var store = new CharacterSaveStore(Path.Combine(root, "LockedRecords"));
+            Require(store.Save("A", breaker, out _) && store.Save("A", momentum, out _), "could not prepare locked slot");
+            string latest = Path.Combine(store.Location, "character-a.json"), backup = latest + ".bak";
+            string latestJson = File.ReadAllText(latest), backupJson = File.ReadAllText(backup);
+
+            using (new FileStream(latest, FileMode.Open, FileAccess.Read, FileShare.None))
+            {
+                var blocked = store.Inspect("A");
+                Require(blocked.HasLatest && !blocked.CanLoad && !blocked.CanSave && !blocked.UsesBackup,
+                    "temporarily unreadable latest preview fell back or appeared writable");
+                Require(!store.Load("A", out _, out _) && !store.Save("A", breaker, out _),
+                    "temporarily unreadable latest was rolled back or overwritten");
+            }
+            using (new FileStream(backup, FileMode.Open, FileAccess.Read, FileShare.None))
+            {
+                var blocked = store.Inspect("A");
+                Require(blocked.CanLoad && !blocked.CanSave && blocked.CharacterId == momentum.CharacterId
+                    && store.Load("A", out var readable, out _) && readable.CharacterId == momentum.CharacterId
+                    && !store.Save("A", breaker, out _), "temporarily unreadable backup was offered for overwrite");
+            }
+            using (new FileStream(latest, FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                Require(store.Inspect("A").CanLoad && !store.Save("A", breaker, out _),
+                    "replacement of a read-only shared handle did not fail");
+                Require(Directory.GetFiles(store.Location, "*.tmp").Length == 0, "failed replacement left a temporary save");
+            }
+            Require(File.ReadAllText(latest) == latestJson && File.ReadAllText(backup) == backupJson
+                && store.Load("A", out var reloaded, out _) && reloaded.CharacterId == momentum.CharacterId,
+                "a failed replacement changed the saved checkpoint or backup");
+            Require(store.Save("A", breaker, out _) && File.ReadAllText(backup) == latestJson,
+                "retry after the lock did not save and preserve the previous latest");
+            Pass("Locked latest and backup protect the checkpoint; failed replacement cleans up its temp and a later retry succeeds");
         }
         static void SlotPreviews(string root, CharacterDevelopmentState momentum, CharacterDevelopmentState breaker)
         {

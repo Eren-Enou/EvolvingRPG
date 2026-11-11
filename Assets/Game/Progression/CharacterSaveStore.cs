@@ -31,14 +31,15 @@ namespace EvolvingRPG.Progression
             if (slot != "A" && slot != "B") throw new ArgumentException("Only experimental slots A and B exist.");
             return Path.Combine(directory, "character-" + slot.ToLowerInvariant() + ".json");
         }
-        static bool Read(string path, out CharacterDevelopmentState state, out string message, out bool protectedRecord)
+        static bool Read(string path, out CharacterDevelopmentState state, out string message, out bool protectedRecord, out bool exists)
         {
-            state = null; protectedRecord = false;
-            if (!File.Exists(path)) { message = "No save exists."; return false; }
+            state = null; protectedRecord = false; exists = true;
             try
             {
-                if (new FileInfo(path).Length > MaximumBytes) { protectedRecord = true; message = "Oversized save preserved; no load or overwrite."; return false; }
-                string json = File.ReadAllText(path, Encoding.UTF8);
+                using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+                if (stream.Length > MaximumBytes) { protectedRecord = true; message = "Oversized save preserved; no load or overwrite."; return false; }
+                using var reader = new StreamReader(stream, Encoding.UTF8);
+                string json = reader.ReadToEnd();
                 if (!json.TrimStart().StartsWith("{") || !json.TrimEnd().EndsWith("}")) { message = "Malformed save."; return false; }
                 var data = JsonUtility.FromJson<CharacterSaveData>(json);
                 if (data == null) { message = "Empty save."; return false; }
@@ -58,8 +59,12 @@ namespace EvolvingRPG.Progression
                 protectedRecord = valid && state.HasUnresolvedContent;
                 return valid;
             }
-            catch (Exception e) when (e is IOException || e is UnauthorizedAccessException || e is ArgumentException)
-            { message = "Cannot read save: " + e.Message; return false; }
+            catch (Exception e) when (e is FileNotFoundException || e is DirectoryNotFoundException)
+            { exists = false; message = "No save exists."; return false; }
+            catch (Exception e) when (e is IOException || e is UnauthorizedAccessException)
+            { protectedRecord = true; message = "Cannot access save. Try again when the file is available. " + e.Message; return false; }
+            catch (ArgumentException e)
+            { message = "Malformed save: " + e.Message; return false; }
         }
         // Use the same read and fallback rules as Load. Inspect never repairs, migrates on disk, or applies a character.
         public SlotPreview Inspect(string slot)
@@ -67,9 +72,8 @@ namespace EvolvingRPG.Progression
             lock (gate)
             {
                 string path = SlotPath(slot);
-                bool hasLatest = File.Exists(path), hasBackup = File.Exists(path + ".bak");
-                bool latestOk = Read(path, out var latest, out string latestReason, out bool latestProtected);
-                bool backupOk = Read(path + ".bak", out var backup, out string backupReason, out bool backupProtected);
+                bool latestOk = Read(path, out var latest, out string latestReason, out bool latestProtected, out bool hasLatest);
+                bool backupOk = Read(path + ".bak", out var backup, out string backupReason, out bool backupProtected, out bool hasBackup);
                 bool canSave = (!hasLatest || latestOk) && !latestProtected && !backupProtected;
                 if (latestOk)
                     return new SlotPreview(slot, latest, latestProtected ? latestReason
@@ -89,10 +93,10 @@ namespace EvolvingRPG.Progression
                 state = null;
                 string path;
                 try { path = SlotPath(slot); } catch (ArgumentException e) { message = e.Message; return false; }
-                if (Read(path, out state, out message, out bool protectedRecord)) return true;
-                if (protectedRecord) return false; // Never silently downgrade a future record to an older backup.
+                if (Read(path, out state, out message, out bool protectedRecord, out _)) return true;
+                if (protectedRecord) return false; // Recovery requires a missing or readable, invalid latest record.
                 string primaryMessage = message;
-                if (Read(path + ".bak", out state, out string backupMessage, out _))
+                if (Read(path + ".bak", out state, out string backupMessage, out _, out _))
                 { message = "Recovered prior backup. Latest file preserved: " + primaryMessage + " Save to the other slot; automatic repair is deliberately disabled. " + backupMessage; return true; }
                 message = primaryMessage + " Backup unavailable: " + backupMessage; return false;
             }
@@ -106,13 +110,11 @@ namespace EvolvingRPG.Progression
                 {
                     string path = SlotPath(slot);
                     if (state == null || state.HasUnresolvedContent) { message = "Unresolved character content cannot be saved over original history."; return false; }
-                    if (File.Exists(path) && (!Read(path, out _, out string reason, out bool protect) || protect))
+                    bool latestOk = Read(path, out _, out string reason, out bool protect, out bool hasLatest);
+                    if (protect || (hasLatest && !latestOk))
                     { message = "Existing slot preserved; save to another healthy slot. " + reason; return false; }
-                    if (File.Exists(path + ".bak"))
-                    {
-                        Read(path + ".bak", out _, out string backupReason, out bool backupProtect);
-                        if (backupProtect) { message = "Protected backup preserved. " + backupReason; return false; }
-                    }
+                    Read(path + ".bak", out _, out string backupReason, out bool backupProtect, out _);
+                    if (backupProtect) { message = "Protected backup preserved. " + backupReason; return false; }
                     var data = state.Export();
                     if (!CharacterDevelopmentState.TryRestore(data, out _, out message)) return false;
                     Directory.CreateDirectory(directory);
@@ -120,8 +122,8 @@ namespace EvolvingRPG.Progression
                     byte[] bytes = Encoding.UTF8.GetBytes(JsonUtility.ToJson(data, true));
                     using (var stream = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None))
                     { stream.Write(bytes, 0, bytes.Length); stream.Flush(true); }
-                    if (!Read(temporary, out _, out message, out _)) return false;
-                    if (File.Exists(path)) File.Replace(temporary, path, path + ".bak");
+                    if (!Read(temporary, out _, out message, out _, out _)) return false;
+                    if (hasLatest) File.Replace(temporary, path, path + ".bak");
                     else File.Move(temporary, path);
                     temporary = null; message = "Saved character " + state.CharacterId.Substring(0, 8) + " to slot " + slot + "."; return true;
                 }

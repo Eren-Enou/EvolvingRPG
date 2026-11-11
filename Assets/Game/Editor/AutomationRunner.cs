@@ -58,7 +58,11 @@ namespace EvolvingRPG.Editor
             if (lines.Length < 2) return;
             string last = lines[lines.Length - 1];
             if (last.StartsWith("PASS All requested", StringComparison.Ordinal)) Finish(true, last);
-            else if (last.StartsWith("FAIL", StringComparison.Ordinal)) Finish(false, last);
+            else
+            {
+                string failure = Array.FindLast(lines, line => line.StartsWith("FAIL ", StringComparison.Ordinal));
+                if (failure != null) Finish(false, failure);
+            }
         }
         static void Finish(bool passed, string message)
         {

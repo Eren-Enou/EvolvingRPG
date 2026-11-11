@@ -193,7 +193,11 @@ namespace EvolvingRPG.Editor
 
             // Remaining cases inject explicit terminal hit fixtures to test mission lifecycle, not attack reach/AI.
             Require(loop.Deploy(ExpeditionAttempt.Relay) && loop.Attempt.Id!=firstAttempt,"retry reused attempt identity");
-            foreach(var enemy in enemies) TerminalHit(enemy.GetComponent<CombatVitality>(),hp);
+            foreach(var enemy in enemies) if(!enemy.GuardedArchetype) TerminalHit(enemy.GetComponent<CombatVitality>(),hp);
+            yield return null;
+            Require(!loop.Attempt.ObjectivesReady && loop.FieldObjective=="Defeat the guarded fighter.",
+                "Restore Relay did not identify the guard after the fast fighter was defeated first");
+            foreach(var enemy in enemies) if(enemy.GuardedArchetype) TerminalHit(enemy.GetComponent<CombatVitality>(),hp);
             yield return null;
             Place(owner.gameObject,relay.position+Vector3.back*1.5f);
             Require(loop.Return(ExpeditionPhase.Completed) && !loop.Attempt.PointAwarded && owner.State.Balance==0,"repeat completion paid again");

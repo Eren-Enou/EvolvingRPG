@@ -16,7 +16,9 @@ namespace EvolvingRPG.Expeditions
         public ExpeditionPhase Outcome { get; private set; } = ExpeditionPhase.Accepted;
         public bool PointAwarded { get; private set; }
         readonly HashSet<string> defeated = new HashSet<string>(StringComparer.Ordinal);
-        public bool ObjectivesReady => defeated.Contains("fast") && (Contract == Priority || defeated.Contains("guarded"));
+        public bool GuardDefeated => defeated.Contains("guarded");
+        public bool FastDefeated => defeated.Contains("fast");
+        public bool ObjectivesReady => FastDefeated && (Contract == Priority || GuardDefeated);
         public ExpeditionAttempt(string characterId, string contract)
         {
             if (!Guid.TryParseExact(characterId, "N", out _) || contract != Relay && contract != Priority)

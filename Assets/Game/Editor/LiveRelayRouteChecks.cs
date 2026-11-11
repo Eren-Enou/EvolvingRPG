@@ -417,9 +417,11 @@ namespace EvolvingRPG.Editor
         {
             yield return .25f;
             CheckCamera();
+            Require(loop.FieldObjective=="Defeat both defenders.","fresh Restore Relay did not identify both targets");
             yield return Walk(new Vector3(-7,.05f,-3),.5f);
             var (guard,fast)=Defenders();
             yield return Fight(guard);
+            Require(loop.FieldObjective=="Defeat the fast fighter.","Restore Relay did not identify the remaining fighter");
             yield return Walk(new Vector3(0,.05f,-3),.6f);
             yield return Walk(new Vector3(7,.05f,-2),.6f);
             yield return Fight(fast);
@@ -430,6 +432,7 @@ namespace EvolvingRPG.Editor
             if(viaPanel) yield return Click("Deploy: Priority Interdiction");
             else Require(loop.Deploy(ExpeditionAttempt.Priority),"live priority deployment rejected");
             Require(loop.InMission && loop.Attempt.Contract==ExpeditionAttempt.Priority,"priority board button did not deploy the expected contract");
+            Require(loop.FieldObjective=="Defeat the fast fighter.","Priority did not identify the mandatory fighter");
             File.AppendAllText(Report,$"PRIORITY {actor.HeavyAttack.DisplayName} / {(wideRoute ? "wide route" : "center route")}\n");
             yield return .25f;
             CheckCamera();
@@ -458,6 +461,7 @@ namespace EvolvingRPG.Editor
             }
             yield return Fight(fast,choice);
             Require(guard.GetComponent<EnemyVitality>().Defeated!=wideRoute,"priority route used the wrong target order");
+            Require(loop.FieldObjective.StartsWith("Blue relay unlocked."),"Priority did not announce the unlocked relay");
             yield return CompleteAtRelay(viaPanel);
             Require(!loop.Attempt.PointAwarded && loop.Report.Contains(wideRoute ? "left the center guard standing" : "cleared the center guard"),
                 "priority completion paid a point or reported the wrong route outcome");
@@ -475,6 +479,7 @@ namespace EvolvingRPG.Editor
             yield return Walk(new Vector3(5,.05f,10),.5f); // Approach relay east of the central obstruction.
             yield return Walk(new Vector3(1.5f,.05f,10),.4f);
             Require(loop.Attempt.ObjectivesReady,"walked relay reached before objective was ready");
+            Require(loop.FieldObjective.StartsWith("Blue relay unlocked."),"relay route cue disagreed with the mission state");
             if(viaStation) yield return Press(Key.F);
             else Require(loop.Return(ExpeditionPhase.Completed),"walked relay completion rejected");
             Require(!loop.InMission && loop.Attempt.Outcome==ExpeditionPhase.Completed,

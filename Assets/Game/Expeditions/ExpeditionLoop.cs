@@ -33,6 +33,16 @@ namespace EvolvingRPG.Expeditions
         public bool AllowsDevelopment => !InMission;
         public bool BoardOpen { get; private set; }
         public string Report { get; private set; } = "Restore the relay to earn your first development point.";
+        public string FieldObjective
+        {
+            get
+            {
+                if (!InMission) return "";
+                if (Attempt.ObjectivesReady) return "Blue relay unlocked. Go around the center barrier to activate it.";
+                if (Attempt.Contract == ExpeditionAttempt.Priority || Attempt.GuardDefeated) return "Defeat the fast fighter.";
+                return Attempt.FastDefeated ? "Defeat the guarded fighter." : "Defeat both defenders.";
+            }
+        }
         public OwnedCharacter Character => character;
         string[] experienceAtDeployment;
         int exchangesAtDeployment;
@@ -258,9 +268,9 @@ namespace EvolvingRPG.Expeditions
             GUILayout.Label(InMission ? ContractTitle(Attempt.Contract) : "Relay Outpost", title);
             if (InMission)
             {
-                GUILayout.Label(Attempt.ObjectivesReady ? "Activate the blue relay. Go around the center barrier."
-                    : Attempt.Contract == ExpeditionAttempt.Relay ? "Defeat both defenders." : "Defeat the fast fighter. Guarded fighter optional.", copy);
-                GUILayout.Label("Guarded: " + DefenderCue(guarded, guardHealth) + "   ·   Fast: " + DefenderCue(fast, fastHealth), copy);
+                GUILayout.Label(FieldObjective, copy);
+                string guardLabel = Attempt.Contract == ExpeditionAttempt.Priority ? "Guarded (optional): " : "Guarded: ";
+                GUILayout.Label(guardLabel + DefenderCue(guarded, guardHealth) + "   ·   Fast: " + DefenderCue(fast, fastHealth), copy);
                 GUILayout.Label($"Health {vitality.Health:0}/{vitality.MaximumHealth:0}   ·   Stamina {stamina.Current:0}/{stamina.Maximum:0}", copy);
                 GUILayout.Label(ActionCue(), copy);
                 if (retaliation != null && retaliation.OpportunityReady)

@@ -13,10 +13,12 @@ namespace EvolvingRPG.Movement
         [SerializeField] private bool invertY;
 
         private StarterAssetsInputs inputs;
+        private PlayerInput playerInput;
 
         private void Awake()
         {
             inputs = GetComponent<StarterAssetsInputs>();
+            playerInput = GetComponent<PlayerInput>();
             inputs.cursorInputForLook = false;
             inputs.lookFromTouch = false;
         }
@@ -33,7 +35,12 @@ namespace EvolvingRPG.Movement
                 Capture(false);
             else if (Cursor.lockState != CursorLockMode.Locked && Mouse.current != null
                      && Mouse.current.leftButton.wasPressedThisFrame)
+            {
                 Capture(true);
+                // Move is continuous. It may have changed while the unlocked cursor suppressed its cached value.
+                var move = playerInput != null && playerInput.inputIsActive ? playerInput.currentActionMap?.FindAction("Move") : null;
+                if (move != null) inputs.MoveInput(move.ReadValue<Vector2>());
+            }
 
             if (Cursor.lockState != CursorLockMode.Locked)
             {

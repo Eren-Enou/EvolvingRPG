@@ -30,6 +30,7 @@ namespace EvolvingRPG.Editor
         static bool passed, oldBackground;
         static double deadline;
         static Keyboard testKeyboard;
+        static Mouse testMouse;
         static InputAction testInteraction;
         static ExpeditionChecks() => EditorApplication.playModeStateChanged += Changed;
 
@@ -66,6 +67,7 @@ namespace EvolvingRPG.Editor
                 EditorApplication.update-=Tick; exercise=null;
                 testInteraction?.RemoveBindingOverride(0); testInteraction=null;
                 if(testKeyboard!=null) InputSystem.RemoveDevice(testKeyboard); testKeyboard=null;
+                if(testMouse!=null) InputSystem.RemoveDevice(testMouse); testMouse=null;
                 Time.captureDeltaTime=oldStep; Application.runInBackground=oldBackground;
             }
             if (state == PlayModeStateChange.EnteredEditMode && SessionState.GetBool(Active,false))
@@ -118,16 +120,37 @@ namespace EvolvingRPG.Editor
             var stale=owner.State.PreviewPurchase(DevelopmentIds.Momentum);
             testInteraction=(InputAction)typeof(ExpeditionLoop).GetField("interact",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(loop);
             testKeyboard=InputSystem.AddDevice<Keyboard>("RelayCheckKeyboard");
+            testMouse=InputSystem.AddDevice<Mouse>("RelayCheckMouse");
+            var playerInput=owner.GetComponent<PlayerInput>();
+            playerInput.neverAutoSwitchControlSchemes=true;
+            playerInput.SwitchCurrentControlScheme("KeyboardMouse",testKeyboard,testMouse);
             testInteraction.ApplyBindingOverride(0,testKeyboard.path+"/f");
             Place(owner.gameObject,board.position+Vector3.back*1.5f);
             InputSystem.QueueStateEvent(testKeyboard,new KeyboardState(Key.F)); yield return .05f;
             InputSystem.QueueStateEvent(testKeyboard,new KeyboardState()); yield return .05f;
             Require(owner.MenuOpen && loop.BoardOpen,"focused native F interaction did not open board/menu");
-            Require(!owner.GetComponent<UnityEngine.InputSystem.PlayerInput>().inputIsActive,"board did not suspend player input");
+            Require(!playerInput.inputIsActive,"board did not suspend player input");
             Require(loop.Deploy(ExpeditionAttempt.Relay) && !owner.MenuOpen && loop.InMission,"deployment did not resume gameplay");
-            Require(owner.GetComponent<UnityEngine.InputSystem.PlayerInput>().inputIsActive
+            Require(playerInput.inputIsActive
                 && owner.GetComponent<EvolvingRPG.Movement.PlaygroundMouseLook>().enabled,"deployment failed to restore movement/camera input ownership");
             string firstAttempt=loop.Attempt.Id;
+            Vector3 arrivalPosition=owner.transform.position;
+            int actionsAtArrival=actor.AcceptedActions;
+            InputSystem.QueueStateEvent(testKeyboard,new KeyboardState(Key.W,Key.Space,Key.LeftShift));
+            yield return .15f;
+            Require(Cursor.lockState==CursorLockMode.None && Vector3.Distance(owner.transform.position,arrivalPosition)<.1f,
+                "gameplay input leaked through the released cursor");
+            InputSystem.QueueStateEvent(testMouse,new MouseState().WithButton(MouseButton.Left));
+            yield return .3f;
+            Vector3 afterCapture=owner.transform.position-arrivalPosition;
+            Require(Cursor.lockState==CursorLockMode.Locked && Vector3.ProjectOnPlane(afterCapture,Vector3.up).magnitude>.25f,
+                $"holding forward through cursor capture did not resume movement: delta={afterCapture}, move={owner.GetComponent<StarterAssetsInputs>().move}");
+            Require(Mathf.Abs(afterCapture.y)<.1f && actor.AcceptedActions==actionsAtArrival,
+                "capture replayed a held jump or dodge, or turned the capture click into an attack");
+            InputSystem.QueueStateEvent(testMouse,new MouseState());
+            InputSystem.QueueStateEvent(testKeyboard,new KeyboardState());
+            yield return .1f;
+            Pass("Forward held before cursor capture resumes movement; held jump, held dodge and the capture click do not start actions.");
             Require(!loop.Return(ExpeditionPhase.Completed) && !loop.Deploy(ExpeditionAttempt.Relay)
                 && !owner.SaveSlot("A") && !owner.LoadSlot("A") && !owner.FreshCharacter(),"mission boundaries allowed reward/redeploy/save/load/fresh");
             Vector3 deployedPosition=owner.transform.position;

@@ -8,7 +8,7 @@ This checkout is an existing Unity project. Use the engine version recorded in [
 
 ## Play the Warrior Journey
 
-Open [RelayOutpost.unity](Assets/Game/Scenes/RelayOutpost.unity) in Unity, press **Play**, and click the Game view. The scene is ready to play. Walk to the gold mission board, press **F**, and deploy on **Restore Relay**. Defeat both defenders and activate the blue relay with **F**. The first restoration gives your Warrior one point to invest in Breaker or Momentum.
+Open [RelayOutpost.unity](Assets/Game/Scenes/RelayOutpost.unity) in Unity, press **Play**, and click the Game view. Walk to the gold mission board, press **F**, and deploy on **Restore Relay**. Click the game after deployment to regain movement and mouse look. Defeat both defenders and activate the blue relay with **F**. The first restoration gives your Warrior one point to invest in Breaker or Momentum.
 
 Use **Tab → Saved Warriors** in the hub to save or resume a Warrior. Return to the board for another restoration or try **Priority Interdiction**, where only the fast fighter is required. See the [V0.6 Warrior Journey report](docs/V0.6_WARRIOR_JOURNEY_REPORT.md) for the full controls, current Windows build, and playtest steps.
 

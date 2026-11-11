@@ -7,6 +7,7 @@ using EvolvingRPG.Combat;
 using EvolvingRPG.Expeditions;
 using EvolvingRPG.Progression;
 using StarterAssets;
+using Unity.Cinemachine;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -234,6 +235,39 @@ namespace EvolvingRPG.Editor
                 && owner.State.RelayMilestone && owner.State.Granted==1 && owner.State.Balance==0,"Breaker restore leaked identity/economy");
             yield return null;
             Require(loop.Attempt==null,"second load inherited attempt");
+
+            // Hold a real camera collision in the arena, then return to clear space at the same zoom.
+            var follow=Find<CinemachineThirdPersonFollow>();
+            var zoom=new SerializedObject(follow.GetComponent<EvolvingRPG.Movement.ThirdPersonCameraZoom>());
+            zoom.FindProperty("distance").floatValue=5.5f;
+            zoom.ApplyModifiedPropertiesWithoutUndo();
+            var cameraTarget=owner.GetComponent<ThirdPersonController>().CinemachineCameraTarget.transform;
+            var output=Camera.main.transform;
+            yield return .6f;
+            float CameraDepth() => Vector3.Dot(cameraTarget.position-output.position,cameraTarget.forward);
+            float clearHubDepth=CameraDepth();
+            Require(loop.Deploy(ExpeditionAttempt.Priority),"camera collision deployment failed");
+            yield return .5f;
+            float clearFieldDepth=CameraDepth();
+            follow.GetRigPositions(out _,out _,out Vector3 hand);
+            var obstacle=new GameObject("Camera collision check fixture");
+            obstacle.transform.SetPositionAndRotation(Vector3.Lerp(hand,output.position,.45f),cameraTarget.rotation);
+            var blocker=obstacle.AddComponent<BoxCollider>();
+            blocker.size=new Vector3(1.5f,2,.35f);
+            Physics.SyncTransforms();
+            yield return .35f;
+            float blockedDepth=CameraDepth();
+            Require(follow.CurrentObstacle==blocker && blockedDepth<clearFieldDepth-1,
+                $"camera was not compressed by the arena fixture: clear={clearFieldDepth:0.00} blocked={blockedDepth:0.00}");
+            Require(loop.Return(ExpeditionPhase.Abandoned),"camera collision abandon failed");
+            yield return null;
+            float returnedDepth=CameraDepth();
+            Require(follow.CurrentObstacle==null && Mathf.Abs(returnedDepth-clearHubDepth)<.15f
+                && Mathf.Abs(follow.CameraDistance-5.5f)<.02f && owner.CanDevelop && loop.BoardOpen,
+                $"camera carried arena collision into the hub: blocked={blockedDepth:0.00} returned={returnedDepth:0.00} clear hub={clearHubDepth:0.00} zoom={follow.CameraDistance:0.00}");
+            UnityEngine.Object.Destroy(obstacle);
+            Pass($"Native camera obstruction compressed depth from {clearFieldDepth:0.00}m to {blockedDepth:0.00}m. Return recovered to {returnedDepth:0.00}m at the same requested zoom.");
+
             Place(owner.gameObject,new Vector3(55,-6,0));
             yield return .1f;
             Require(owner.CanDevelop && owner.State.Balance==0,"hub fall recovery failed or minted reward");

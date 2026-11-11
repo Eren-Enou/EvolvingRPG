@@ -188,7 +188,12 @@ namespace EvolvingRPG.Expeditions
         {
             var target = character.GetComponent<StarterAssets.ThirdPersonController>().CinemachineCameraTarget.transform;
             foreach (var camera in FindObjectsByType<CinemachineCamera>())
-                if (camera.gameObject.scene == gameObject.scene) camera.OnTargetObjectWarped(target, delta);
+            {
+                if (camera.gameObject.scene != gameObject.scene) continue;
+                camera.OnTargetObjectWarped(target, delta);
+                // A zone warp changes the surrounding geometry. Recompute collision on the next camera update.
+                if (camera.Follow == target) camera.PreviousStateIsValid = false;
+            }
         }
         void OnGUI()
         {

@@ -55,6 +55,7 @@ namespace EvolvingRPG.Editor
             OwnedCharacter owner = null;
             foreach (var root in SceneManager.GetActiveScene().GetRootGameObjects()) if (owner == null) owner = root.GetComponentInChildren<OwnedCharacter>(true);
             if (owner == null) throw new InvalidOperationException("Missing owned-character scene.");
+            owner.UseTestSaveDirectory(Path.GetFullPath(Path.Combine("Logs", "PanelInputSaves", Guid.NewGuid().ToString("N"))));
             EvasionEvidenceHUD evidenceHUD = null;
             foreach (var root in SceneManager.GetActiveScene().GetRootGameObjects())
                 if (evidenceHUD == null) evidenceHUD = root.GetComponentInChildren<EvasionEvidenceHUD>(true);

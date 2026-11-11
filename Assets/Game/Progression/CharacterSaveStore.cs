@@ -12,6 +12,20 @@ namespace EvolvingRPG.Progression
         const int MaximumBytes = 65536;
         public CharacterSaveStore(string directory) { this.directory = Path.GetFullPath(directory); }
         public string Location => directory;
+        public readonly struct SlotPreview
+        {
+            public readonly string Slot, CharacterId, Heavy, Detail;
+            public readonly bool CanLoad, CanSave, HasLatest, UsesBackup, RetaliationActive, Unresolved;
+            public readonly int Revision;
+
+            internal SlotPreview(string slot, CharacterDevelopmentState state, string detail, bool canSave, bool hasLatest, bool usesBackup)
+            {
+                Slot = slot; CharacterId = state?.CharacterId; Heavy = state?.Heavy; Detail = detail;
+                CanLoad = state != null; CanSave = canSave; HasLatest = hasLatest; UsesBackup = usesBackup;
+                RetaliationActive = state?.RetaliationActive == true; Unresolved = state?.HasUnresolvedContent == true;
+                Revision = state?.Revision ?? -1;
+            }
+        }
         string SlotPath(string slot)
         {
             if (slot != "A" && slot != "B") throw new ArgumentException("Only experimental slots A and B exist.");
@@ -46,6 +60,27 @@ namespace EvolvingRPG.Progression
             }
             catch (Exception e) when (e is IOException || e is UnauthorizedAccessException || e is ArgumentException)
             { message = "Cannot read save: " + e.Message; return false; }
+        }
+        // Use the same read and fallback rules as Load. Inspect never repairs, migrates on disk, or applies a character.
+        public SlotPreview Inspect(string slot)
+        {
+            lock (gate)
+            {
+                string path = SlotPath(slot);
+                bool hasLatest = File.Exists(path), hasBackup = File.Exists(path + ".bak");
+                bool latestOk = Read(path, out var latest, out string latestReason, out bool latestProtected);
+                bool backupOk = Read(path + ".bak", out var backup, out string backupReason, out bool backupProtected);
+                bool canSave = (!hasLatest || latestOk) && !latestProtected && !backupProtected;
+                if (latestOk)
+                    return new SlotPreview(slot, latest, latestProtected ? latestReason
+                        : backupProtected ? "Protected backup: saving is disabled. " + backupReason : "", canSave, hasLatest, false);
+                if (latestProtected) return new SlotPreview(slot, null, latestReason, false, hasLatest, false);
+                if (backupOk)
+                    return new SlotPreview(slot, backup, "Load recovers the prior backup; it does not repair the latest file."
+                        + (backupProtected ? " " + backupReason : ""), canSave, hasLatest, true);
+                string detail = !hasLatest && !hasBackup ? "" : latestReason + " Backup: " + backupReason;
+                return new SlotPreview(slot, null, detail, canSave, hasLatest, false);
+            }
         }
         public bool Load(string slot, out CharacterDevelopmentState state, out string message)
         {

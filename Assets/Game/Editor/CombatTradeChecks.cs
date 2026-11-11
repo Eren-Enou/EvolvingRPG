@@ -46,6 +46,7 @@ namespace EvolvingRPG.Editor
         static void Begin()
         {
             var owner = Find<OwnedCharacter>(); var actions = owner.GetComponent<CombatActions>();
+            owner.UseTestSaveDirectory(Path.GetFullPath(Path.Combine("Logs", "CombatTradeSaves", Guid.NewGuid().ToString("N"))));
             var vitality = owner.GetComponent<CombatVitality>(); var inputs = owner.GetComponent<StarterAssetsInputs>();
             var motor = owner.GetComponent<ThirdPersonController>(); var hud = Find<EnemySandboxHUD>();
             SandboxEnemy enemy = null;

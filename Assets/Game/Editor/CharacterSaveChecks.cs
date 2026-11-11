@@ -86,6 +86,46 @@ namespace EvolvingRPG.Editor
             Require(!new CharacterSaveStore(blocked).Save("A", a, out _) && a.Balance == 0 && a.RetaliationActive, "failed I/O changed memory");
             Pass("Missing definition retained/inactive with protected original; inconsistent economy/configuration, slot traversal and failed I/O reject safely");
             MissionEconomy(root);
+            SlotPreviews(root, a, b);
+        }
+        static void SlotPreviews(string root, CharacterDevelopmentState momentum, CharacterDevelopmentState breaker)
+        {
+            var store = new CharacterSaveStore(Path.Combine(root, "SlotPreviews"));
+            var empty = store.Inspect("A");
+            Require(!empty.CanLoad && empty.CanSave && !empty.HasLatest && !Directory.Exists(store.Location),
+                "inspecting an empty slot changed disk or offered a load");
+            Require(store.Save("A", breaker, out _) && store.Save("A", momentum, out _) && store.Save("B", breaker, out _),
+                "could not prepare slot previews");
+            string latest = Path.Combine(store.Location, "character-a.json"), backup = latest + ".bak";
+            string latestJson = File.ReadAllText(latest), backupJson = File.ReadAllText(backup);
+            var a = store.Inspect("A"); var b = store.Inspect("B");
+            Require(a.CanSave && a.CanLoad && !a.UsesBackup && a.HasLatest && a.CharacterId == momentum.CharacterId
+                && a.Heavy == DevelopmentIds.Momentum && a.RetaliationActive && a.Revision == momentum.Revision
+                && b.CanSave && b.CanLoad && b.CharacterId == breaker.CharacterId && b.Heavy == DevelopmentIds.Breaker && !b.RetaliationActive,
+                "slot summaries did not describe independent saved Warriors");
+            Require(File.ReadAllText(latest) == latestJson && File.ReadAllText(backup) == backupJson,
+                "preview wrote a primary or backup");
+            File.WriteAllText(latest, "{broken");
+            var recovered = store.Inspect("A");
+            Require(recovered.CanLoad && !recovered.CanSave && recovered.UsesBackup && recovered.CharacterId == breaker.CharacterId
+                && !recovered.Equals(a) && File.ReadAllText(latest) == "{broken" && File.ReadAllText(backup) == backupJson,
+                "damaged latest did not preview read-only recovery of the previous Warrior");
+            File.Delete(latest); // This fixture owns both records in an isolated Logs directory.
+            var backupOnly = store.Inspect("A");
+            Require(backupOnly.CanLoad && backupOnly.CanSave && backupOnly.UsesBackup && !backupOnly.HasLatest,
+                "backup-only slot should allow a new latest file without replacing its backup");
+            var future = momentum.Export(); future.schemaVersion = 99;
+            string futureJson = JsonUtility.ToJson(future);
+            File.WriteAllText(latest, futureJson);
+            var protectedLatest = store.Inspect("A");
+            Require(!protectedLatest.CanLoad && !protectedLatest.CanSave && !protectedLatest.UsesBackup
+                && File.ReadAllText(latest) == futureJson, "future latest preview fell back or offered overwrite");
+            File.WriteAllText(latest, latestJson); File.WriteAllText(backup, futureJson);
+            var protectedBackup = store.Inspect("A");
+            Require(protectedBackup.CanLoad && !protectedBackup.CanSave && !protectedBackup.UsesBackup
+                && protectedBackup.CharacterId == momentum.CharacterId && File.ReadAllText(backup) == futureJson,
+                "protected backup did not prevent overwrite or blocked healthy latest load");
+            Pass("Read-only slot previews: empty and independent builds, backup-only and damaged recovery, future latest and protected backup");
         }
         static void MissionEconomy(string root)
         {

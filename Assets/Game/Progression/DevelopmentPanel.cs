@@ -6,9 +6,13 @@ namespace EvolvingRPG.Progression
     {
         [SerializeField] OwnedCharacter character;
         DevelopmentPurchasePreview? preview;
-        string observedCharacter;
+        CharacterDevelopmentState observedCharacter;
         bool confirmFresh;
-        string saveSlot, saveCharacter;
+        CharacterSaveStore.SlotPreview[] slots;
+        CharacterSaveStore.SlotPreview? pendingSlot;
+        bool loadingSlot;
+        int pendingRevision;
+        string slotNotice;
         Vector2 scroll;
         public void Configure(OwnedCharacter owner) => character = owner;
         void OnGUI()
@@ -21,13 +25,13 @@ namespace EvolvingRPG.Progression
         {
             if (character == null || character.State == null) return;
             var expedition = character.GetComponent<EvolvingRPG.Expeditions.ExpeditionLoop>();
-            if (expedition != null && (!character.MenuOpen || expedition.BoardOpen)) return;
             var state = character.State;
-            if (observedCharacter != state.CharacterId)
+            if (observedCharacter != state || !character.MenuOpen || (expedition != null && expedition.BoardOpen))
             {
-                observedCharacter = state.CharacterId;
-                preview = null; saveSlot = saveCharacter = null; confirmFresh = false;
+                observedCharacter = state;
+                preview = null; pendingSlot = null; slots = null; confirmFresh = false; slotNotice = null;
             }
+            if (expedition != null && (!character.MenuOpen || expedition.BoardOpen)) return;
             var actions = character.GetComponent<CombatActions>();
             if (!character.MenuOpen)
             {
@@ -56,13 +60,14 @@ namespace EvolvingRPG.Progression
                 if (GUILayout.Button("Confirm investment")) { character.Purchase(preview.Value); preview = null; }
                 if (GUILayout.Button("Cancel preview")) preview = null;
             }
-            if (saveSlot != null)
-            {
-                GUILayout.Label("Confirm saving character " + saveCharacter.Substring(0, 8) + " to " + saveSlot + ". Existing supported slot becomes the backup.");
-                if (GUILayout.Button("Confirm save / overwrite supported slot")) { if (character.State.CharacterId == saveCharacter) character.SaveSlot(saveSlot); saveSlot = null; }
-                if (GUILayout.Button("Cancel save")) saveSlot = null;
-            }
             scroll = GUILayout.BeginScrollView(scroll);
+            DrawSaveSlots(state);
+            if (GUILayout.Button(confirmFresh ? "Confirm fresh character (unsaved current character replaced)" : "Create fresh experimental character"))
+            {
+                pendingSlot = null;
+                if (confirmFresh) { character.FreshCharacter(); preview = null; confirmFresh = false; }
+                else confirmFresh = true;
+            }
             GUILayout.Label("CHARACTER EXPERIENCE / retained facts, not XP or power. " + state.ExperienceCount + " demonstrated. Save explicitly; encounter resets retain completed facts.");
             GUILayout.Label(character.Experience.Latest);
             GUILayout.Label("Prototype rule: one Heavy discipline per character; no respec. Initial fixture points: " + state.InitialPoints + ". First relay completion: one point once per character. Reveal: one additional fixture point. No automatic investment. Not a final economy.");
@@ -76,13 +81,6 @@ namespace EvolvingRPG.Progression
             {
                 var effect = character.GetComponent<RetaliatoryMomentumTrial>();
                 Card(DevelopmentIds.Retaliation, $"Retaliatory Momentum: after verified evasion, forward intent + RMB adds {effect.AddedAdvance:0.##} m. +{effect.AddedMissRecovery:0.##} s recovery unless the linked opponent generation is hit. Ordinary miss recovery also applies. Learning does not activate it.");
-            }
-            if (GUILayout.Button(confirmFresh ? "Confirm fresh character (unsaved current character replaced)" : "Create fresh experimental character"))
-            { if (confirmFresh) { character.FreshCharacter(); preview = null; saveSlot = null; confirmFresh = false; } else confirmFresh = true; }
-            foreach (string slot in new[] { "A", "B" })
-            {
-                if (GUILayout.Button("Save current character to slot " + slot)) { saveSlot = slot; saveCharacter = state.CharacterId; }
-                if (GUILayout.Button("Load slot " + slot + " (replaces unsaved current character)")) { character.LoadSlot(slot); preview = null; saveSlot = null; confirmFresh = false; }
             }
             GUILayout.Label("Local save folder: " + character.SaveLocation);
             if (state.HasUnresolvedContent) GUILayout.Label(state.ContentWarning);
@@ -98,6 +96,59 @@ namespace EvolvingRPG.Progression
             }
             GUILayout.Label("Displacement is the observed start-to-end position change, not distance walked or proof that a wall caused shortened travel. Applied totals include all contacted targets.");
             GUILayout.EndScrollView(); GUILayout.EndArea();
+        }
+        void RefreshSlots() => slots = new[] { character.InspectSaveSlot("A"), character.InspectSaveSlot("B") };
+
+        static string SavedWarrior(CharacterSaveStore.SlotPreview slot) =>
+            slot.CharacterId.Substring(0, 8) + " · " + DevelopmentIds.Label(slot.Heavy)
+                + (slot.RetaliationActive ? " + Retaliatory Momentum" : "")
+                + (slot.Unresolved ? " · missing content" : "");
+
+        void DrawSaveSlots(CharacterDevelopmentState state)
+        {
+            if (slots == null) RefreshSlots();
+            GUILayout.Label("Saved Warriors");
+            if (GUILayout.Button("Refresh saved Warriors")) { RefreshSlots(); pendingSlot = null; slotNotice = null; }
+            if (slotNotice != null) GUILayout.Label(slotNotice);
+            foreach (var slot in slots)
+            {
+                string label = slot.CanLoad ? SavedWarrior(slot) + (slot.UsesBackup ? " (backup)" : "")
+                    : slot.CanSave && string.IsNullOrEmpty(slot.Detail) ? "Empty" : "Unavailable";
+                GUILayout.Label($"Slot {slot.Slot}: {label}");
+                if (!string.IsNullOrEmpty(slot.Detail)) GUILayout.Label(slot.Detail);
+                GUILayout.BeginHorizontal();
+                bool enabled = GUI.enabled;
+                GUI.enabled = enabled && slot.CanLoad;
+                if (GUILayout.Button($"Review load {slot.Slot}")) ReviewSlot(slot, state, true);
+                GUI.enabled = enabled && slot.CanSave && !state.HasUnresolvedContent;
+                if (GUILayout.Button($"Review save {slot.Slot}")) ReviewSlot(slot, state, false);
+                GUI.enabled = enabled;
+                GUILayout.EndHorizontal();
+            }
+            if (!pendingSlot.HasValue) return;
+            var selected = pendingSlot.Value;
+            string current = state.CharacterId.Substring(0, 8);
+            GUILayout.Label(loadingSlot
+                ? $"Load {SavedWarrior(selected)} from slot {selected.Slot}{(selected.UsesBackup ? " backup" : "")}? Unsaved changes to Warrior {current} will be lost."
+                : $"Save Warrior {current} to slot {selected.Slot}?"
+                    + (selected.HasLatest ? $" This replaces {SavedWarrior(selected)}; the previous save becomes the backup."
+                        : selected.UsesBackup ? " The existing backup is preserved." : ""));
+            if (GUILayout.Button(loadingSlot ? "Confirm load" : "Confirm save"))
+            {
+                pendingSlot = null;
+                if (character.State != state || state.Revision != pendingRevision || !selected.Equals(character.InspectSaveSlot(selected.Slot)))
+                    slotNotice = "The character or save slot changed. Review it again before continuing.";
+                else if (loadingSlot) character.LoadSlot(selected.Slot);
+                else character.SaveSlot(selected.Slot);
+                RefreshSlots();
+            }
+            if (GUILayout.Button("Cancel slot action")) pendingSlot = null;
+        }
+
+        void ReviewSlot(CharacterSaveStore.SlotPreview slot, CharacterDevelopmentState state, bool load)
+        {
+            pendingSlot = slot; pendingRevision = state.Revision; loadingSlot = load;
+            preview = null; confirmFresh = false; slotNotice = null;
         }
         void Card(string id, string description)
         {

@@ -119,6 +119,7 @@ namespace EvolvingRPG.Progression
             if (!CanDevelop) { Message = "Save only at safe spawn while ready."; return false; }
             bool success = saves.Save(slot, State, out string message); Message = message; return success;
         }
+        public CharacterSaveStore.SlotPreview InspectSaveSlot(string slot) => saves.Inspect(slot);
         public bool LoadSlot(string slot)
         {
             if (!CanDevelop) { Message = "Load only at safe spawn while ready."; return false; }

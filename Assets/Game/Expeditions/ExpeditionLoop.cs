@@ -23,6 +23,7 @@ namespace EvolvingRPG.Expeditions
         CombatActions actions;
         CombatVitality vitality;
         CombatStamina stamina;
+        ContextualDiscovery discovery;
         RetaliatoryMomentumTrial retaliation;
         EnemyVitality guardHealth, fastHealth;
         Vector3 relayGuardPost, relayFastPost;
@@ -48,6 +49,7 @@ namespace EvolvingRPG.Expeditions
             if(character == null) character = GetComponent<OwnedCharacter>();
             actions = character.GetComponent<CombatActions>(); vitality = character.GetComponent<CombatVitality>();
             stamina = character.GetComponent<CombatStamina>();
+            discovery = character.GetComponent<ContextualDiscovery>();
             retaliation = character.GetComponent<RetaliatoryMomentumTrial>();
         }
         void OnEnable() { interact.Enable(); character.CharacterRecordReplaced += RecordReplaced; }
@@ -238,7 +240,7 @@ namespace EvolvingRPG.Expeditions
             if (state.RetaliationActive) return "Momentum practice: use the longer return when the lane is clear. Keep ordinary Momentum or reposition when the lunge would leave you exposed.";
             if (state.RetaliationLearned) return "Your learned return is inactive. Inspect your Warrior to equip it for the next expedition.";
             if (state.Knowledge == DiscoveryKnowledge.Revealed) return "A new Momentum application is available to learn in development.";
-            return "Momentum practice: try the wide lane. Evade a committed strike, then see whether you can return to the same fighter with your advancing Heavy.";
+            return "Momentum practice: face one fighter at a time. Evade a committed strike, land your advancing Heavy on the same fighter, and finish recovery.";
         }
 
         void DrawHud()
@@ -254,7 +256,10 @@ namespace EvolvingRPG.Expeditions
                 GUILayout.Label($"Health {vitality.Health:0}/{vitality.MaximumHealth:0}   ·   Stamina {stamina.Current:0}/{stamina.Maximum:0}", copy);
                 GUILayout.Label(ActionCue(), copy);
                 if (retaliation != null && retaliation.OpportunityReady)
-                    GUILayout.Label($"Return opening ({retaliation.SecondsRemaining:0.0}s) · Forward + RMB commits to a longer lunge. Miss the linked fighter and recovery lasts longer.", copy);
+                {
+                    string target = retaliation.Opportunity.Value.Source.GuardedArchetype ? "guarded fighter" : "fast fighter";
+                    GUILayout.Label($"Return opening: {target} ({retaliation.SecondsRemaining:0.0}s)\nForward + RMB: longer lunge. RMB without forward input: ordinary Momentum. Miss this fighter and recovery lasts longer.", copy);
+                }
             }
             GUILayout.Label(StationCue(), copy);
             if (showDiagnostics && InMission)
@@ -263,6 +268,9 @@ namespace EvolvingRPG.Expeditions
                 GUILayout.Label($"Guarded HP {guardHealth.Health:0} / poise {guardHealth.Poise:0} · Fast HP {fastHealth.Health:0} / poise {fastHealth.Poise:0}", copy);
                 GUILayout.Label(actions.Message, copy);
                 GUILayout.Label(character.Experience.Latest, copy);
+                if (character.State.Heavy == DevelopmentIds.Momentum && character.State.Knowledge != DiscoveryKnowledge.Revealed
+                    && discovery?.Ledger != null)
+                    GUILayout.Label($"Momentum discovery {character.State.Exchanges}/3 · {discovery.Ledger.Diagnostic}", copy);
             }
             GUILayout.EndVertical();
             GUILayout.EndArea();

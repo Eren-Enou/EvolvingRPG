@@ -267,6 +267,10 @@ namespace EvolvingRPG.Editor
                 && owner.State.RelayMilestone && owner.State.CharacterId==identity && owner.State.ExperienceCount>baselineFacts
                 && owner.HasUnsavedProgress,
                 "live repeat duplicated the reward, lost identity, or did not record specialized practice");
+            if (owner.State.Exchanges > 0)
+                Require(loop.Report.Contains(discoveryPoint > 0 ? "Retaliatory Momentum discovered. +1 development point"
+                    : $"{owner.State.Exchanges}/3 qualifying exchanges recorded"),
+                    "debrief did not explain the Momentum progress earned on this expedition");
             File.AppendAllText(Report,"PASS Live journey through F, board/debrief buttons, investment, save, fresh start, load, Tab and second restoration.\n");
             Require(owner.SaveSlot("A") && owner.LoadSlot("A") && owner.State.ExperienceCount>baselineFacts,
                 "repeat experience did not survive explicit save and reload");
@@ -326,7 +330,7 @@ namespace EvolvingRPG.Editor
             Require(owner.State.Exchanges==3 && owner.State.Knowledge==DiscoveryKnowledge.Revealed && owner.State.Granted==2
                 && owner.State.Balance==1 && !owner.State.RetaliationLearned && !owner.RetaliationActive,
                 "live exchanges did not reveal exactly one unspent point and an unlearned return");
-            yield return Click("Inspect Warrior / Save and Load");
+            yield return Click("Review Retaliatory Momentum");
             Require(owner.MenuOpen && !loop.BoardOpen,"return debrief did not open development");
             yield return Click(DevelopmentIds.Retaliation,1);
             Require(!owner.State.RetaliationLearned && owner.State.Balance==1,"return preview spent the point before confirmation");
@@ -445,7 +449,9 @@ namespace EvolvingRPG.Editor
             Require(loop.Attempt.ObjectivesReady,"walked relay reached before objective was ready");
             if(viaStation) yield return Press(Key.F);
             else Require(loop.Return(ExpeditionPhase.Completed),"walked relay completion rejected");
-            Require(!loop.InMission && loop.Attempt.Outcome==ExpeditionPhase.Completed,"relay interaction did not settle the expedition");
+            Require(!loop.InMission && loop.Attempt.Outcome==ExpeditionPhase.Completed,
+                $"relay interaction did not settle at {owner.transform.position}: focused={Application.isFocused}, "
+                +$"busy={actor.Busy}, staggered={vitality.Staggered}, menu={owner.MenuOpen}, ready={loop.Attempt.ObjectivesReady}");
             yield return .25f;
             CheckCamera();
         }

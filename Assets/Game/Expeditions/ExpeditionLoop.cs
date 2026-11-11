@@ -153,8 +153,10 @@ namespace EvolvingRPG.Expeditions
                 : Attempt.Contract == ExpeditionAttempt.Relay ? "First restoration reward already earned." : "No completion point for this contract.";
             string learning = newFacts.Count == 0 ? "No new Heavy experience this trip." : "New Heavy experience: " + string.Join(", ", newFacts) + ".";
             if (exchanges > 0) learning += character.State.Knowledge == DiscoveryKnowledge.Revealed
-                ? " Your Warrior discovered a new Momentum application. Inspect development to learn it."
-                : " Your evasive movement is starting to shape your advancing strikes.";
+                ? "\nRetaliatory Momentum discovered. +1 development point. You can learn the technique in development."
+                : $"\nMomentum discovery: {character.State.Exchanges}/3 qualifying exchanges recorded.";
+            if (outcome != ExpeditionPhase.Completed && (newFacts.Count > 0 || exchanges > 0))
+                learning += "\nYour Warrior kept this progress.";
             Report = $"{result}\n{reward}\n{elapsed}s in the field · {learning}";
             OpenBoard(); return settled;
         }
@@ -211,6 +213,12 @@ namespace EvolvingRPG.Expeditions
             {
                 if (JourneyGui.Button("Retry " + ContractTitle(Attempt.Contract))) Deploy(Attempt.Contract);
             }
+            if (character.State.Knowledge == DiscoveryKnowledge.Revealed && !character.State.RetaliationLearned)
+            {
+                if (JourneyGui.Button("Review Retaliatory Momentum")) BoardOpen = false;
+            }
+            string practice = NextPractice();
+            if (practice != null) GUILayout.Label(practice, copy);
             GUILayout.Space(8);
             GUILayout.Label("Restore Relay", title);
             GUILayout.Label("Defeat both defenders and activate the blue relay. " + (character.State.RelayMilestone
@@ -221,8 +229,6 @@ namespace EvolvingRPG.Expeditions
             GUILayout.Label("The guard holds the center lane. Take the wider right lane to try to isolate the fast fighter, or clear the guard first. Defeat the fast fighter and activate the relay. No completion point.", copy);
             if (JourneyGui.Button("Deploy: Priority Interdiction")) Deploy(ExpeditionAttempt.Priority);
             GUILayout.Space(8);
-            string practice = NextPractice();
-            if (practice != null) GUILayout.Label(practice, copy);
             if (JourneyGui.Button("Inspect Warrior / Save and Load")) BoardOpen = false;
             if (GUILayout.Button("Return to the outpost")) { character.CloseMenu(); BoardOpen = false; }
             showDiagnostics = GUILayout.Toggle(showDiagnostics, "Show combat diagnostics in the field");
@@ -241,8 +247,8 @@ namespace EvolvingRPG.Expeditions
             if (state.Heavy != DevelopmentIds.Momentum) return null;
             if (state.RetaliationActive) return "Momentum practice: use the longer return when the lane is clear. Keep ordinary Momentum or reposition when the lunge would leave you exposed.";
             if (state.RetaliationLearned) return "Your learned return is inactive. Inspect your Warrior to equip it for the next expedition.";
-            if (state.Knowledge == DiscoveryKnowledge.Revealed) return "A new Momentum application is available to learn in development.";
-            return "Momentum practice: face one fighter at a time. Evade a committed strike, land your advancing Heavy on the same fighter, and finish recovery.";
+            if (state.Knowledge == DiscoveryKnowledge.Revealed) return null;
+            return $"Momentum practice ({state.Exchanges}/3): evade a committed strike, land your advancing Heavy on that fighter, and finish recovery.";
         }
 
         void DrawHud()

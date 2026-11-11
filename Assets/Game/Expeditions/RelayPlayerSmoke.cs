@@ -72,6 +72,8 @@ namespace EvolvingRPG.Expeditions
                         || owner.HasUnsavedProgress || !owner.SaveStatus.Contains("slot B"))
                     { Fail("backup recovery could not save the restored Warrior to another slot"); yield break; }
                     Debug.Log("PASS Relay restart recover: " + owner.State.CharacterId + " restored from backup and saved to B; damaged latest protected.");
+                    DevelopmentPanel.EndSession();
+                    yield break;
                 }
                 else
                 {

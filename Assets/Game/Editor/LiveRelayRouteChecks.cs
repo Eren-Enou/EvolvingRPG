@@ -243,9 +243,13 @@ namespace EvolvingRPG.Editor
             Require(owner.State.Balance==1 && owner.State.Primary=="","review spent the earned point before confirmation");
             yield return Click("Confirm investment");
             Require(owner.State.Heavy==DevelopmentIds.Momentum && owner.State.Balance==0,"confirmed investment did not equip Momentum");
+            yield return Click("Saved Warriors");
+            yield return ReviewAndCancelQuit(true);
             yield return SaveAndReloadViaPanel(identity);
             Require(owner.State.CharacterId==identity
                 && owner.State.Primary==DevelopmentIds.Momentum && owner.State.Balance==0 && owner.State.RelayMilestone,"live-earned character roundtrip failed");
+            yield return ReviewAndCancelQuit(false);
+            File.AppendAllText(Report,"PASS Saved Warriors distinguishes unsaved and saved session exit; cancellation preserves the Warrior and returns to save controls.\n");
             yield return null;
             File.AppendAllText(Report,"RESTORE attempt="+(loop.Attempt==null ? "none" : loop.Attempt.Phase.ToString())
                 +" actorBusy="+actor.Busy+" context="+actor.CommittedContext.HasValue+" identity="+owner.State.CharacterId+"\n");
@@ -327,6 +331,29 @@ namespace EvolvingRPG.Editor
             yield return Click("Confirm load");
             Require(owner.State.CharacterId==identity && !owner.HasUnsavedProgress && owner.SaveStatus.Contains("slot A"),
                 "load buttons did not restore and acknowledge the earned Warrior");
+        }
+        static IEnumerator ReviewAndCancelQuit(bool unsaved)
+        {
+            var warrior=owner.State;
+            yield return Click("Quit game");
+            yield return RefreshQuitControls();
+            string expected=unsaved ? "Quit without saving" : "Confirm quit";
+            Require(journeyButtons.ContainsKey(expected) && !journeyButtons.ContainsKey("Review save A"),
+                $"quit did not show the correct confirmation for this Warrior's save status: expected {expected}; rendered {string.Join(", ",journeyButtons.Keys)}");
+            yield return Click("Cancel quit");
+            yield return RefreshQuitControls();
+            Require(owner.MenuOpen && owner.State==warrior && owner.HasUnsavedProgress==unsaved
+                && journeyButtons.ContainsKey("Review save A") && !journeyButtons.ContainsKey(expected),
+                "canceling quit replaced progress or did not restore the save controls");
+        }
+        static IEnumerator RefreshQuitControls()
+        {
+            // Discard observations from the repaint between queueing the click and applying it.
+            journeyButtons.Clear();
+            gameView.Repaint();
+            double until=EditorApplication.timeSinceStartup+2;
+            while(!journeyButtons.ContainsKey("Saved Warriors") && EditorApplication.timeSinceStartup<until)
+                yield return null;
         }
         static IEnumerator SavePartialDiscovery(string identity)
         {

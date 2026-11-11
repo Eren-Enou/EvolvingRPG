@@ -9,6 +9,7 @@ namespace EvolvingRPG.Progression
         DevelopmentPurchasePreview? preview;
         CharacterDevelopmentState observedCharacter;
         bool confirmFresh;
+        bool confirmQuit;
         CharacterSaveStore.SlotPreview[] slots;
         CharacterSaveStore.SlotPreview? pendingSlot;
         bool loadingSlot;
@@ -39,7 +40,7 @@ namespace EvolvingRPG.Progression
             section = next;
             reviewReturn = focusReturn;
             scroll = Vector2.zero;
-            preview = null; pendingSlot = null; confirmFresh = false; slotNotice = null;
+            preview = null; pendingSlot = null; confirmFresh = confirmQuit = false; slotNotice = null;
         }
         void OnGUI()
         {
@@ -55,7 +56,7 @@ namespace EvolvingRPG.Progression
             if (observedCharacter != state || !character.MenuOpen || (expedition != null && expedition.BoardOpen))
             {
                 observedCharacter = state;
-                preview = null; pendingSlot = null; slots = null; confirmFresh = false; slotNotice = null;
+                preview = null; pendingSlot = null; slots = null; confirmFresh = confirmQuit = false; slotNotice = null;
                 if (!character.MenuOpen || (expedition != null && expedition.BoardOpen)) ShowSection(Section.SavedWarriors);
             }
             if (expedition != null && (!character.MenuOpen || expedition.BoardOpen)) return;
@@ -108,6 +109,18 @@ namespace EvolvingRPG.Progression
 
         void DrawSavedWarriors(CharacterDevelopmentState state)
         {
+            if (confirmQuit)
+            {
+                bool unsaved = character.HasUnsavedProgress;
+                GUILayout.Label(unsaved ? "Your Warrior has unsaved progress. Cancel to save before quitting." : "End this session?");
+                if (JourneyGui.Button(unsaved ? "Quit without saving" : "Confirm quit"))
+                {
+                    confirmQuit = false;
+                    EndSession();
+                }
+                if (JourneyGui.Button("Cancel quit")) confirmQuit = false;
+                return;
+            }
             DrawSaveSlots(state);
             if (JourneyGui.Button(confirmFresh ? "Confirm fresh character (unsaved current character replaced)" : "Create fresh experimental character"))
             {
@@ -115,8 +128,24 @@ namespace EvolvingRPG.Progression
                 if (confirmFresh) { character.FreshCharacter(); preview = null; confirmFresh = false; }
                 else confirmFresh = true;
             }
+            if (expedition != null && JourneyGui.Button("Quit game"))
+            {
+                confirmQuit = true;
+                pendingSlot = null;
+                confirmFresh = false;
+                scroll = Vector2.zero;
+            }
             GUILayout.Label("Local save folder: " + character.SaveLocation);
             if (state.HasUnresolvedContent) GUILayout.Label(state.ContentWarning);
+        }
+
+        internal static void EndSession()
+        {
+            #if UNITY_EDITOR
+            UnityEditor.EditorApplication.ExitPlaymode();
+            #else
+            Application.Quit();
+            #endif
         }
 
         void DrawTechniques(CharacterDevelopmentState state, bool inExpedition)

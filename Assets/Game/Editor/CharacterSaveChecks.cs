@@ -141,6 +141,12 @@ namespace EvolvingRPG.Editor
                 "slot summaries did not describe independent saved Warriors");
             Require(File.ReadAllText(latest) == latestJson && File.ReadAllText(backup) == backupJson,
                 "preview wrote a primary or backup");
+            File.AppendAllText(backup, "\n");
+            var changedBackup = store.Inspect("A");
+            Require(changedBackup.CanSave && changedBackup.CanLoad && changedBackup.CharacterId == a.CharacterId
+                && changedBackup.Revision == a.Revision && !changedBackup.Equals(a),
+                "review identity ignored a changed backup when the visible latest stayed the same");
+            File.WriteAllText(backup, backupJson);
             File.WriteAllText(latest, "{broken");
             var recovered = store.Inspect("A");
             Require(recovered.CanLoad && !recovered.CanSave && recovered.UsesBackup && recovered.CharacterId == breaker.CharacterId

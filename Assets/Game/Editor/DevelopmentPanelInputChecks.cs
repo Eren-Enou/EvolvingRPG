@@ -99,6 +99,9 @@ namespace EvolvingRPG.Editor
                 var store = new CharacterSaveStore(saveRoot);
                 var momentum = Warrior(DevelopmentIds.Momentum);
                 var breaker = Warrior(DevelopmentIds.Breaker);
+                var baselineContact = new[] { HeavyExperienceCatalog.Id(DevelopmentIds.Baseline, HeavyExperienceCatalog.Contact) };
+                Require(momentum.RecordExperience(baselineContact) == 1 && breaker.RecordExperience(baselineContact) == 1,
+                    "could not seed saved practice");
                 Require(store.Save("A", momentum, out _) && store.Save("B", breaker, out _), "could not seed isolated slot fixtures");
                 slotChecks = ExerciseSlots(owner, store, momentum, breaker, Click, buttons.ContainsKey, report);
                 JourneyGui.ButtonRepainted += ObserveButton;
@@ -171,6 +174,16 @@ namespace EvolvingRPG.Editor
             Require(state.Purchase(heavy, state.Revision, out _), "could not create slot build");
             return state;
         }
+        static string SameSummaryWithDifferentPractice(CharacterDevelopmentState state)
+        {
+            var record = state.Export();
+            record.heavyExperience = new[] { HeavyExperienceCatalog.Id(state.Primary, HeavyExperienceCatalog.Contact) };
+            Require(CharacterDevelopmentState.TryRestore(record, out var branch, out _) && branch.Revision == state.Revision
+                && branch.CharacterId == state.CharacterId && branch.Heavy == state.Heavy
+                && !branch.HasExperience(DevelopmentIds.Baseline, HeavyExperienceCatalog.Contact),
+                "could not create a different save with the same summary");
+            return JsonUtility.ToJson(record, true);
+        }
         static IEnumerator ExerciseSlots(OwnedCharacter owner, CharacterSaveStore store, CharacterDevelopmentState momentum,
             CharacterDevelopmentState breaker, Action<string> click, Func<string, bool> isVisible, string report)
         {
@@ -186,6 +199,12 @@ namespace EvolvingRPG.Editor
             click("Confirm load"); yield return null;
             Require(owner.State.CharacterId == momentum.CharacterId && owner.State.Heavy == DevelopmentIds.Momentum,
                 "confirmed load did not restore the reviewed Warrior and technique");
+            string slotB = Path.Combine(store.Location, "character-b.json");
+            click("Review load B"); yield return null;
+            File.WriteAllText(slotB, SameSummaryWithDifferentPractice(breaker));
+            click("Confirm load"); yield return null;
+            Require(owner.State.CharacterId == momentum.CharacterId && !isVisible("Confirm load"),
+                "stale review loaded a changed record with the same summary");
             click("Review load B"); yield return null;
             var replacement = Warrior(DevelopmentIds.Breaker);
             Require(replacement.CharacterId != breaker.CharacterId && store.Save("B", replacement, out _), "could not update reviewed slot fixture");
@@ -202,9 +221,15 @@ namespace EvolvingRPG.Editor
             Require(!isVisible("Confirm save") && isVisible("Review save A") && File.ReadAllText(slotA) == originalA && !File.Exists(slotA + ".bak"),
                 "cancel save altered the slot or left confirmation active");
             click("Review save A"); yield return null;
+            string changedA = SameSummaryWithDifferentPractice(momentum);
+            File.WriteAllText(slotA, changedA);
+            click("Confirm save"); yield return null;
+            Require(File.ReadAllText(slotA) == changedA && !File.Exists(slotA + ".bak"),
+                "stale review overwrote a changed record with the same summary");
+            click("Review save A"); yield return null;
             click("Confirm save"); yield return null;
             Require(store.Load("A", out var saved, out _) && saved.CharacterId == replacement.CharacterId
-                && File.ReadAllText(slotA + ".bak") == originalA, "confirmed overwrite did not save the active Warrior and retain the previous file");
+                && File.ReadAllText(slotA + ".bak") == changedA, "confirmed overwrite did not save the active Warrior and retain the reviewed file");
             File.AppendAllText(report, SlotChecksPassed + "\n");
         }
         static void Require(bool condition, string message)

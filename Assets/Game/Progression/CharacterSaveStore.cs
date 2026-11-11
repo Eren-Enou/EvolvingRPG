@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Security.Cryptography;
 using System.Text;
 using UnityEngine;
 namespace EvolvingRPG.Progression
@@ -17,13 +18,17 @@ namespace EvolvingRPG.Progression
             public readonly string Slot, CharacterId, Heavy, Detail;
             public readonly bool CanLoad, CanSave, HasLatest, UsesBackup, RetaliationActive, Unresolved;
             public readonly int Revision;
+            // SlotPreview equality is also the confirmation check for the files the player reviewed.
+            internal readonly string LatestFingerprint, BackupFingerprint;
 
-            internal SlotPreview(string slot, CharacterDevelopmentState state, string detail, bool canSave, bool hasLatest, bool usesBackup)
+            internal SlotPreview(string slot, CharacterDevelopmentState state, string detail, bool canSave, bool hasLatest,
+                bool usesBackup, string latestFingerprint, string backupFingerprint)
             {
                 Slot = slot; CharacterId = state?.CharacterId; Heavy = state?.Heavy; Detail = detail;
                 CanLoad = state != null; CanSave = canSave; HasLatest = hasLatest; UsesBackup = usesBackup;
                 RetaliationActive = state?.RetaliationActive == true; Unresolved = state?.HasUnresolvedContent == true;
                 Revision = state?.Revision ?? -1;
+                LatestFingerprint = latestFingerprint; BackupFingerprint = backupFingerprint;
             }
         }
         string SlotPath(string slot)
@@ -32,12 +37,22 @@ namespace EvolvingRPG.Progression
             return Path.Combine(directory, "character-" + slot.ToLowerInvariant() + ".json");
         }
         static bool Read(string path, out CharacterDevelopmentState state, out string message, out bool protectedRecord, out bool exists)
+            => Read(path, out state, out message, out protectedRecord, out exists, out _, false);
+
+        static bool Read(string path, out CharacterDevelopmentState state, out string message, out bool protectedRecord,
+            out bool exists, out string fingerprint, bool captureFingerprint = true)
         {
-            state = null; protectedRecord = false; exists = true;
+            state = null; protectedRecord = false; exists = true; fingerprint = null;
             try
             {
                 using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
                 if (stream.Length > MaximumBytes) { protectedRecord = true; message = "Oversized save preserved; no load or overwrite."; return false; }
+                if (captureFingerprint)
+                {
+                    using var digest = SHA256.Create();
+                    fingerprint = Convert.ToBase64String(digest.ComputeHash(stream));
+                    stream.Position = 0;
+                }
                 using var reader = new StreamReader(stream, Encoding.UTF8);
                 string json = reader.ReadToEnd();
                 if (!json.TrimStart().StartsWith("{") || !json.TrimEnd().EndsWith("}")) { message = "Malformed save."; return false; }
@@ -72,18 +87,19 @@ namespace EvolvingRPG.Progression
             lock (gate)
             {
                 string path = SlotPath(slot);
-                bool latestOk = Read(path, out var latest, out string latestReason, out bool latestProtected, out bool hasLatest);
-                bool backupOk = Read(path + ".bak", out var backup, out string backupReason, out bool backupProtected, out bool hasBackup);
+                bool latestOk = Read(path, out var latest, out string latestReason, out bool latestProtected, out bool hasLatest, out string latestFingerprint);
+                bool backupOk = Read(path + ".bak", out var backup, out string backupReason, out bool backupProtected, out bool hasBackup, out string backupFingerprint);
                 bool canSave = (!hasLatest || latestOk) && !latestProtected && !backupProtected;
                 if (latestOk)
                     return new SlotPreview(slot, latest, latestProtected ? latestReason
-                        : backupProtected ? "Protected backup: saving is disabled. " + backupReason : "", canSave, hasLatest, false);
-                if (latestProtected) return new SlotPreview(slot, null, latestReason, false, hasLatest, false);
+                        : backupProtected ? "Protected backup: saving is disabled. " + backupReason : "", canSave, hasLatest, false,
+                        latestFingerprint, backupFingerprint);
+                if (latestProtected) return new SlotPreview(slot, null, latestReason, false, hasLatest, false, latestFingerprint, backupFingerprint);
                 if (backupOk)
                     return new SlotPreview(slot, backup, "Load recovers the prior backup; it does not repair the latest file."
-                        + (backupProtected ? " " + backupReason : ""), canSave, hasLatest, true);
+                        + (backupProtected ? " " + backupReason : ""), canSave, hasLatest, true, latestFingerprint, backupFingerprint);
                 string detail = !hasLatest && !hasBackup ? "" : latestReason + " Backup: " + backupReason;
-                return new SlotPreview(slot, null, detail, canSave, hasLatest, false);
+                return new SlotPreview(slot, null, detail, canSave, hasLatest, false, latestFingerprint, backupFingerprint);
             }
         }
         public bool Load(string slot, out CharacterDevelopmentState state, out string message)

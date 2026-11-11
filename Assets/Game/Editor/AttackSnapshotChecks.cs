@@ -303,6 +303,10 @@ namespace EvolvingRPG.Editor
                 // Far target, direct accepted action: verify explanation persists into its completed observation.
                 Require(actions.TryAttack(profile), "could not start miss fixture");
                 TickAt(actions, profile.Windup + 0.1f);
+                Require(actions.RecoveryMissReason == MeleeMissReason.None, "miss was reported before the active window ended");
+                TickAt(actions, profile.Windup + profile.ActiveTime + 0.1f);
+                Require(actions.Phase == CombatPhase.Recovery && actions.RecoveryMissReason == MeleeMissReason.NoTargetInReach,
+                    "recovery did not expose the resolved miss reason");
                 TickAt(actions, profile.Duration + 0.1f);
                 var completed = actions.Diagnostics.Records[actions.Diagnostics.Records.Count - 1];
                 Require(completed.Kind == CombatObservationKind.Completed && completed.TargetsHit == 0
@@ -310,6 +314,7 @@ namespace EvolvingRPG.Editor
                     && completed.Summary.Contains("no target in reach")
                     && actions.Message.Contains("no target in reach"), "completed miss lost geometry evidence");
                 Require(actions.TryDodge(), "could not start dodge after completed miss");
+                Require(actions.RecoveryMissReason == MeleeMissReason.None, "dodge carried an earlier attack miss");
                 TickAt(actions, 2f);
                 completed = actions.Diagnostics.Records[actions.Diagnostics.Records.Count - 1];
                 Require(completed.ActionKind == CombatActionKind.Dodge && completed.MissReason == MeleeMissReason.None

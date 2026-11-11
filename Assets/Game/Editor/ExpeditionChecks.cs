@@ -185,6 +185,17 @@ namespace EvolvingRPG.Editor
             // First clear uses actual unmodified Heavy acceptance, collision query and hit resolution.
             // Freeze opponent decisions and place the actor behind each target: controlled integration, not AI/route difficulty validation.
             foreach(var enemy in enemies) enemy.enabled=false;
+            var fieldCue=typeof(ExpeditionLoop).GetMethod("ActionCue",BindingFlags.Instance|BindingFlags.NonPublic);
+            string ReadFieldCue() => (string)fieldCue.Invoke(loop,null);
+            Require(actor.TryAttack(actor.HeavyAttack),"field miss fixture could not commit a Heavy");
+            Require(!ReadFieldCue().Contains("Out of reach"),"field called the Heavy a miss during windup");
+            while(actor.Phase==CombatPhase.Windup || actor.Phase==CombatPhase.Active) yield return null;
+            string missCue=ReadFieldCue();
+            Require(actor.Phase==CombatPhase.Recovery && missCue.Contains("Recovering") && missCue.Contains("Out of reach"),
+                "field did not explain the committed miss during recovery: "+missCue);
+            while(actor.Busy) yield return null;
+            Require(ReadFieldCue().Contains("Out of reach"),"field dropped the completed miss explanation");
+            Pass("Native field Heavy shows the miss reason during recovery and after regaining control.");
             foreach(var enemy in enemies)
             {
                 Place(enemy.gameObject,new Vector3(0,.05f,-1));

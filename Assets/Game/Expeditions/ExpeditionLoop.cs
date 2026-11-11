@@ -329,16 +329,31 @@ namespace EvolvingRPG.Expeditions
             if (actions.Busy)
             {
                 string action = actions.HasCommittedAttack ? actions.CommittedAttack.DisplayName : "Dodge";
-                return action + (actions.Phase == CombatPhase.Recovery || actions.Phase == CombatPhase.DodgeRecovery ? " · Recovering"
+                string phase = action + (actions.Phase == CombatPhase.Recovery || actions.Phase == CombatPhase.DodgeRecovery ? " · Recovering"
                     : actions.Phase == CombatPhase.Windup ? " · Committed" : " · Executing");
+                if (actions.RecoveringFromLinkedMiss) phase += "\nMissed the linked fighter · longer recovery";
+                if (actions.RecoveryMissReason != MeleeMissReason.None) phase += "\n" + FieldMissCue(actions.RecoveryMissReason);
+                return phase;
             }
             var last = character.Review.Latest;
             string ready = "Ready · RMB " + DevelopmentIds.Label(character.State.Heavy);
             if (last == null || last == lastAttackBeforeDeployment) return ready;
             string result = last.Interrupted ? last.Name + " interrupted" : last.PoiseBroken ? "Staggered the opponent"
-                : last.Contacts == 0 ? last.Name + " missed: " + MeleeMissFeedback.Describe(last.MissReason)
+                : last.Contacts == 0 ? last.Name + " missed. " + FieldMissCue(last.MissReason)
                 : last.Guarded ? "Hit a raised guard" : "Hit landed";
             return ready + "\n" + result;
+        }
+
+        static string FieldMissCue(MeleeMissReason reason)
+        {
+            switch (reason)
+            {
+                case MeleeMissReason.NoTargetInReach: return "Out of reach. Close the gap before committing.";
+                case MeleeMissReason.OutsideArc: return "Outside the swing. Face the fighter before committing.";
+                case MeleeMissReason.Obstructed: return "Strike blocked. Find a clear angle.";
+                case MeleeMissReason.TargetUnavailable: return "No active fighter in reach.";
+                default: return "No hit confirmed.";
+            }
         }
 
         static string ContractTitle(string contract) => contract == ExpeditionAttempt.Priority ? "Priority Interdiction" : "Restore Relay";

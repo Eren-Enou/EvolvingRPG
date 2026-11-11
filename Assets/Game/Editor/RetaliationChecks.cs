@@ -109,7 +109,14 @@ namespace EvolvingRPG.Editor
                     }
                     else
                     {
-                        if (actor.Busy) return;
+                        if (actor.Busy)
+                        {
+                            if (actor.Phase == CombatPhase.Recovery)
+                                Require(actor.RecoveringFromLinkedMiss == (test >= 2 && test <= 5),
+                                    "linked miss feedback disagreed with the committed recovery: case " + test);
+                            return;
+                        }
+                        Require(!actor.RecoveringFromLinkedMiss, "linked miss feedback survived recovery");
                         float duration = Time.time - acceptedAt;
                         float distance = Vector3.ProjectOnPlane(actor.transform.position - start, Vector3.up).magnitude;
                         float expected = test == 0 || test == 1 || test == 7 ? 1.01f : test == 2 || test == 5 ? 1.26f : test == 6 || test == 8 ? 1.56f : 1.81f;

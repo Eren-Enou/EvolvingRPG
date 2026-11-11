@@ -40,6 +40,11 @@ namespace EvolvingRPG.Combat
         public float DodgeSpeedThisFrame { get; private set; }
         public float AttackAdvanceSpeedThisFrame { get; private set; }
         public float PhaseProgress { get; private set; }
+        public MeleeMissReason RecoveryMissReason => Phase == CombatPhase.Recovery && hitTargets.Count == 0
+            ? missReason : MeleeMissReason.None;
+        public bool RecoveringFromLinkedMiss => Phase == CombatPhase.Recovery && LinkedMissRecovery > 0f;
+        private float LinkedMissRecovery => CommittedContext.HasValue && (!contextTargetHit || !CommittedContext.Value.SameGeneration)
+            ? CommittedContext.Value.TargetMissRecovery : 0f;
         public string Message { get; private set; } = "Ready";
         public int AcceptedActions { get; private set; }
         public CombatObservationLog Diagnostics { get; } = new CombatObservationLog();
@@ -213,7 +218,7 @@ namespace EvolvingRPG.Combat
             }
             Phase = elapsed < attack.Windup ? CombatPhase.Windup : elapsed < activeEnd ? CombatPhase.Active : CombatPhase.Recovery;
             float recoveryTime = attack.Recovery + (hitTargets.Count == 0 ? attack.MissRecovery : 0)
-                + (CommittedContext.HasValue && (!contextTargetHit || !CommittedContext.Value.SameGeneration) ? CommittedContext.Value.TargetMissRecovery : 0);
+                + LinkedMissRecovery;
             PhaseProgress = Phase == CombatPhase.Windup ? elapsed / attack.Windup : Phase == CombatPhase.Active
                 ? (elapsed - attack.Windup) / attack.ActiveTime : Mathf.Clamp01((elapsed - activeEnd) / recoveryTime);
             if (elapsed >= activeEnd + recoveryTime) EndAction();

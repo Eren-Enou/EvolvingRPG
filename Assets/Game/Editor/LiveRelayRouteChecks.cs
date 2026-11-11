@@ -236,7 +236,10 @@ namespace EvolvingRPG.Editor
                 && owner.HasUnsavedProgress,"live completion lost identity, reward or unsaved indication");
             yield return Click("Choose your specialization");
             Require(!loop.BoardOpen && owner.MenuOpen,"debrief button did not open development");
-            yield return Click(DevelopmentIds.Momentum,1);
+            Require(journeyButtons.TryGetValue(DevelopmentIds.Breaker,out Vector2 breakerButton)
+                && breakerButton.y>=0 && breakerButton.y<Screen.height-22,
+                "first-clear development did not present Breaker in the initial viewport");
+            yield return Click(DevelopmentIds.Momentum);
             Require(owner.State.Balance==1 && owner.State.Primary=="","review spent the earned point before confirmation");
             yield return Click("Confirm investment");
             Require(owner.State.Heavy==DevelopmentIds.Momentum && owner.State.Balance==0,"confirmed investment did not equip Momentum");
@@ -311,7 +314,8 @@ namespace EvolvingRPG.Editor
         }
         static IEnumerator SaveAndReloadViaPanel(string identity)
         {
-            yield return Click("Review save A",-1);
+            yield return Click("Saved Warriors");
+            yield return Click("Review save A");
             yield return Click("Confirm save");
             Require(owner.InspectSaveSlot("A").CharacterId==identity && !owner.HasUnsavedProgress && owner.SaveStatus.Contains("slot A"),
                 "save buttons did not persist and acknowledge the earned Warrior");
@@ -360,12 +364,12 @@ namespace EvolvingRPG.Editor
                 "live exchanges did not reveal exactly one unspent point and an unlearned return");
             yield return Click("Review Retaliatory Momentum");
             Require(owner.MenuOpen && !loop.BoardOpen,"return debrief did not open development");
-            yield return Click(DevelopmentIds.Retaliation,1);
+            yield return Click(DevelopmentIds.Retaliation);
             Require(!owner.State.RetaliationLearned && owner.State.Balance==1,"return preview spent the point before confirmation");
             yield return Click("Confirm investment");
             Require(owner.State.RetaliationLearned
                 && !owner.RetaliationActive && owner.State.Balance==0,"learning the return failed or automatically equipped it");
-            yield return Click("Activate learned return",1);
+            yield return Click("Activate learned return");
             Require(owner.RetaliationActive,"equip control did not activate the learned return");
             yield return SaveAndReloadViaPanel(identity);
             Require(owner.State.RetaliationLearned && owner.RetaliationActive

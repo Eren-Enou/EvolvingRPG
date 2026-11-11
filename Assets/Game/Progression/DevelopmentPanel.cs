@@ -1,4 +1,5 @@
 using EvolvingRPG.Combat;
+using EvolvingRPG.Expeditions;
 using UnityEngine;
 namespace EvolvingRPG.Progression
 {
@@ -14,7 +15,32 @@ namespace EvolvingRPG.Progression
         int pendingRevision;
         string slotNotice;
         Vector2 scroll;
+        enum Section { SavedWarriors, Techniques, History }
+        Section section;
+        bool reviewReturn;
+        ExpeditionLoop expedition;
         public void Configure(OwnedCharacter owner) => character = owner;
+
+        void OnEnable()
+        {
+            expedition = character != null ? character.GetComponent<ExpeditionLoop>() : null;
+            if (expedition != null) expedition.TechniquesRequested += ShowTechniques;
+        }
+
+        void OnDisable()
+        {
+            if (expedition != null) expedition.TechniquesRequested -= ShowTechniques;
+        }
+
+        void ShowTechniques(bool focusReturn) => ShowSection(Section.Techniques, focusReturn);
+
+        void ShowSection(Section next, bool focusReturn = false)
+        {
+            section = next;
+            reviewReturn = focusReturn;
+            scroll = Vector2.zero;
+            preview = null; pendingSlot = null; confirmFresh = false; slotNotice = null;
+        }
         void OnGUI()
         {
             JourneyGui.Begin();
@@ -25,12 +51,12 @@ namespace EvolvingRPG.Progression
         void Draw()
         {
             if (character == null || character.State == null) return;
-            var expedition = character.GetComponent<EvolvingRPG.Expeditions.ExpeditionLoop>();
             var state = character.State;
             if (observedCharacter != state || !character.MenuOpen || (expedition != null && expedition.BoardOpen))
             {
                 observedCharacter = state;
                 preview = null; pendingSlot = null; slots = null; confirmFresh = false; slotNotice = null;
+                if (!character.MenuOpen || (expedition != null && expedition.BoardOpen)) ShowSection(Section.SavedWarriors);
             }
             if (expedition != null && (!character.MenuOpen || expedition.BoardOpen)) return;
             var actions = character.GetComponent<CombatActions>();
@@ -51,17 +77,37 @@ namespace EvolvingRPG.Progression
             GUI.color = previousColor;
             GUILayout.BeginArea(new Rect(12, 12, Mathf.Min(760, Screen.width - 24), Screen.height - 30), GUI.skin.box);
             GUILayout.Label(expedition != null ? "OWNED WARRIOR / Tab closes / return to the mission board to deploy" : "OWNED CHARACTER / experimental specialization / Tab inspect at spawn / R encounter reset");
-            GUILayout.Label($"Character {state.CharacterId.Substring(0, 8)} | points {state.Balance}/{state.Granted} granted | selected {DevelopmentIds.Label(state.Heavy)}");
-            GUILayout.Label($"{actions.Phase} | {actions.Message} | HP {character.GetComponent<CombatVitality>().Health:0} | stamina {character.GetComponent<CombatStamina>().Current:0}");
-            GUILayout.Label("Knowledge: " + state.Knowledge + " | qualifying exchanges " + state.Exchanges + "/3 | learned return: " + state.RetaliationLearned + " | active: " + state.RetaliationActive);
+            if (expedition != null)
+            {
+                GUILayout.Label($"Warrior {state.CharacterId.Substring(0, 8)} · {DevelopmentIds.Label(state.Heavy)} Heavy · {state.Balance} unspent development {(state.Balance == 1 ? "point" : "points")}");
+                GUILayout.BeginHorizontal();
+                if (JourneyGui.Button("Techniques")) ShowSection(Section.Techniques);
+                if (JourneyGui.Button("Saved Warriors")) ShowSection(Section.SavedWarriors);
+                if (JourneyGui.Button("Combat history")) ShowSection(Section.History);
+                GUILayout.EndHorizontal();
+            }
+            else
+            {
+                GUILayout.Label($"Character {state.CharacterId.Substring(0, 8)} | points {state.Balance}/{state.Granted} granted | selected {DevelopmentIds.Label(state.Heavy)}");
+                GUILayout.Label($"{actions.Phase} | {actions.Message} | HP {character.GetComponent<CombatVitality>().Health:0} | stamina {character.GetComponent<CombatStamina>().Current:0}");
+                GUILayout.Label("Knowledge: " + state.Knowledge + " | qualifying exchanges " + state.Exchanges + "/3 | learned return: " + state.RetaliationLearned + " | active: " + state.RetaliationActive);
+            }
             GUILayout.Label(character.Message);
             if (preview != null)
             {
-                GUILayout.Label("Confirm spending 1 point on: " + DevelopmentIds.Label(preview.Value.DevelopmentId) + " (preview revision " + preview.Value.Revision + ")");
+                GUILayout.Label($"Spend 1 development point to learn {DevelopmentIds.Label(preview.Value.DevelopmentId)}?");
                 if (JourneyGui.Button("Confirm investment")) { character.Purchase(preview.Value); preview = null; }
                 if (JourneyGui.Button("Cancel preview")) preview = null;
             }
             scroll = GUILayout.BeginScrollView(scroll);
+            if (expedition == null || section == Section.SavedWarriors) DrawSavedWarriors(state);
+            if (expedition == null || section == Section.Techniques) DrawTechniques(state, expedition != null);
+            if (expedition == null || section == Section.History) DrawHistory(state);
+            GUILayout.EndScrollView(); GUILayout.EndArea();
+        }
+
+        void DrawSavedWarriors(CharacterDevelopmentState state)
+        {
             DrawSaveSlots(state);
             if (JourneyGui.Button(confirmFresh ? "Confirm fresh character (unsaved current character replaced)" : "Create fresh experimental character"))
             {
@@ -69,22 +115,39 @@ namespace EvolvingRPG.Progression
                 if (confirmFresh) { character.FreshCharacter(); preview = null; confirmFresh = false; }
                 else confirmFresh = true;
             }
-            GUILayout.Label("CHARACTER EXPERIENCE / retained facts, not XP or power. " + state.ExperienceCount + " demonstrated. Save explicitly; encounter resets retain completed facts.");
-            GUILayout.Label(character.Experience.Latest);
-            GUILayout.Label("Prototype rule: one Heavy discipline per character; no respec. Initial fixture points: " + state.InitialPoints + ". First relay completion: one point once per character. Reveal: one additional fixture point. No automatic investment. Not a final economy.");
-            GUILayout.Label("Technique numbers describe base attacks. Contextual return is separate; guard and collision can change results. Recent attacks show the form actually committed.");
-            Card(DevelopmentIds.Baseline, "Baseline Heavy: the shared starting technique; remains learned after specializing.");
-            Card(DevelopmentIds.Breaker, "Breaker: planted disruption with longer exposure. Compare poise and commitment below. Purchase selects this Heavy.");
-            Card(DevelopmentIds.Momentum, "Momentum: committed windup advance with lighter impact and additional miss exposure. Purchase selects this Heavy.");
-            if (state.Knowledge == DiscoveryKnowledge.Undiscovered) GUILayout.Label("Further connections emerge through invested combat experience.");
-            else if (state.Knowledge == DiscoveryKnowledge.Foreshadowed) GUILayout.Label("Hint: your verified evasions are beginning to shape your advancing strikes.");
-            else
-            {
-                var effect = character.GetComponent<RetaliatoryMomentumTrial>();
-                Card(DevelopmentIds.Retaliation, $"Retaliatory Momentum: after verified evasion, forward intent + RMB adds {effect.AddedAdvance:0.##} m. +{effect.AddedMissRecovery:0.##} s recovery unless the linked opponent generation is hit. Ordinary miss recovery also applies. Learning does not activate it.");
-            }
             GUILayout.Label("Local save folder: " + character.SaveLocation);
             if (state.HasUnresolvedContent) GUILayout.Label(state.ContentWarning);
+        }
+
+        void DrawTechniques(CharacterDevelopmentState state, bool inExpedition)
+        {
+            if (inExpedition)
+                GUILayout.Label("Each Warrior can learn one Heavy discipline. Learning it equips that Heavy. Baseline remains available.");
+            else
+            {
+                GUILayout.Label("Prototype rule: one Heavy discipline per character; no respec. Initial fixture points: " + state.InitialPoints + ". First relay completion: one point once per character. Reveal: one additional fixture point. No automatic investment. Not a final economy.");
+                Card(DevelopmentIds.Baseline, "Baseline Heavy: the shared starting technique; remains learned after specializing.");
+            }
+            if (reviewReturn && state.Knowledge == DiscoveryKnowledge.Revealed) DrawReturnCard();
+            Card(DevelopmentIds.Breaker, "Breaker: plant your feet to disrupt guards and break poise. Allow time for the longer recovery.");
+            Card(DevelopmentIds.Momentum, "Momentum: advance during windup to close a gap. It deals less poise damage and takes longer to recover on a miss.");
+            if (inExpedition) Card(DevelopmentIds.Baseline, "Baseline Heavy: the shared starting technique; remains learned after specializing.");
+            if (state.Knowledge == DiscoveryKnowledge.Undiscovered) GUILayout.Label("Further connections emerge through invested combat experience.");
+            else if (state.Knowledge == DiscoveryKnowledge.Foreshadowed) GUILayout.Label("Hint: your verified evasions are beginning to shape your advancing strikes.");
+            else if (!reviewReturn) DrawReturnCard();
+            GUILayout.Label("The cards show base attacks. Combat history shows what was committed and what happened.");
+        }
+
+        void DrawReturnCard()
+        {
+            var effect = character.GetComponent<RetaliatoryMomentumTrial>();
+            Card(DevelopmentIds.Retaliation, $"Retaliatory Momentum: after verified evasion, forward intent + RMB adds {effect.AddedAdvance:0.##} m. +{effect.AddedMissRecovery:0.##} s recovery unless you hit the linked fighter. Equip it after learning.");
+        }
+
+        void DrawHistory(CharacterDevelopmentState state)
+        {
+            GUILayout.Label($"Heavy experience · {state.ExperienceCount} demonstrated");
+            GUILayout.Label(character.Experience.Latest);
             GUILayout.Label("Journal: invested Momentum + verified evasion + successful same-opponent Momentum within 1.5 s of dodge recovery + full Heavy recovery. Three distinct strikes reveal; no empty defensive talent is sold.");
             foreach (var entry in character.GetComponent<ContextualDiscovery>().Ledger.Journal) GUILayout.Label(entry);
             GUILayout.Label("Recent attacks / session review only / retained across encounter resets; cleared by character creation or load. No mastery or rewards.");
@@ -96,7 +159,6 @@ namespace EvolvingRPG.Progression
                 if (explanation != null) GUILayout.Label(explanation);
             }
             GUILayout.Label("Displacement is the observed start-to-end position change, not distance walked or proof that a wall caused shortened travel. Applied totals include all contacted targets.");
-            GUILayout.EndScrollView(); GUILayout.EndArea();
         }
         void RefreshSlots() => slots = new[] { character.InspectSaveSlot("A"), character.InspectSaveSlot("B") };
 

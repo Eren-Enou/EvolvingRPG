@@ -32,6 +32,7 @@ namespace EvolvingRPG.Expeditions
         public bool InMission => Attempt != null && Attempt.Phase == ExpeditionPhase.InProgress;
         public bool AllowsDevelopment => !InMission;
         public bool BoardOpen { get; private set; }
+        public event Action<bool> TechniquesRequested;
         public string Report { get; private set; } = "Restore the relay to earn your first development point.";
         public string FieldObjective
         {
@@ -104,6 +105,8 @@ namespace EvolvingRPG.Expeditions
                 case Station.Arrival: Return(ExpeditionPhase.Abandoned); break;
                 case Station.Board: OpenBoard(); break;
                 case Station.Development:
+                    if (character.TryOpenMenu()) TechniquesRequested?.Invoke(false);
+                    break;
                 case Station.Save: character.TryOpenMenu(); break;
             }
         }
@@ -222,7 +225,7 @@ namespace EvolvingRPG.Expeditions
             GUILayout.Label(character.SaveStatus, copy);
             if (Attempt?.PointAwarded == true && character.State.Balance > 0)
             {
-                if (JourneyGui.Button("Choose your specialization")) BoardOpen = false;
+                if (JourneyGui.Button("Choose your specialization")) { BoardOpen = false; TechniquesRequested?.Invoke(false); }
             }
             else if (Attempt != null && Attempt.Outcome != ExpeditionPhase.Completed)
             {
@@ -230,7 +233,7 @@ namespace EvolvingRPG.Expeditions
             }
             if (character.State.Knowledge == DiscoveryKnowledge.Revealed && !character.State.RetaliationLearned)
             {
-                if (JourneyGui.Button("Review Retaliatory Momentum")) BoardOpen = false;
+                if (JourneyGui.Button("Review Retaliatory Momentum")) { BoardOpen = false; TechniquesRequested?.Invoke(true); }
             }
             string practice = NextPractice();
             if (practice != null) GUILayout.Label(practice, copy);

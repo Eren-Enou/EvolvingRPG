@@ -202,6 +202,7 @@ namespace EvolvingRPG.Expeditions
             GUILayout.Label($"{DevelopmentIds.Label(character.State.Heavy)} · {character.State.Balance} development points", copy);
             GUILayout.Space(8);
             GUILayout.Label(Report, copy);
+            GUILayout.Label(character.SaveStatus, copy);
             if (Attempt?.PointAwarded == true && character.State.Balance > 0)
             {
                 if (JourneyGui.Button("Choose your specialization")) BoardOpen = false;
@@ -224,7 +225,6 @@ namespace EvolvingRPG.Expeditions
             if (practice != null) GUILayout.Label(practice, copy);
             if (JourneyGui.Button("Inspect Warrior / Save and Load")) BoardOpen = false;
             if (GUILayout.Button("Return to the outpost")) { character.CloseMenu(); BoardOpen = false; }
-            GUILayout.Label("Save to keep your progress between sessions. Loading an older record replaces unsaved progress.", copy);
             showDiagnostics = GUILayout.Toggle(showDiagnostics, "Show combat diagnostics in the field");
             GUILayout.Label("WASD move · Q/E strafe · Space jump · Mouse look / wheel zoom\nLMB Light · RMB Heavy · Shift Dodge · F Interact · Tab Inspect", copy);
             GUILayout.EndScrollView();
@@ -264,6 +264,8 @@ namespace EvolvingRPG.Expeditions
                 }
             }
             GUILayout.Label(StationCue(), copy);
+            if (!InMission)
+                GUILayout.Label(character.HasUnsavedProgress ? "Unsaved progress · Tab for Saved Warriors" : "Tab · Saved Warriors and development", copy);
             if (showDiagnostics && InMission)
             {
                 GUILayout.Space(6);

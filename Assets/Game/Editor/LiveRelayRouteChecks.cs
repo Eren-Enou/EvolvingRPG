@@ -222,7 +222,7 @@ namespace EvolvingRPG.Editor
             journeyInteract.ApplyBindingOverride(0,journeyKeyboard.path+"/f");
             journeyInspect.ApplyBindingOverride(0,journeyKeyboard.path+"/tab");
             JourneyGui.ButtonRepainted+=ObserveButton;
-            Require(owner.State.Balance==0 && owner.State.Primary=="","fresh Warrior unexpectedly funded/specialized");
+            Require(owner.State.Balance==0 && owner.State.Primary=="" && !owner.HasUnsavedProgress,"fresh Warrior unexpectedly funded, specialized or unsaved");
             yield return Walk(new Vector3(55,.05f,2.5f),.3f);
             yield return Press(Key.F);
             Require(loop.BoardOpen && owner.MenuOpen,"F at the board did not open the mission list");
@@ -232,7 +232,8 @@ namespace EvolvingRPG.Editor
             string identity=owner.State.CharacterId,attempt=loop.Attempt.Id;
             File.AppendAllText(Report,"DEPLOY "+attempt+" / Warrior "+identity+"\n");
             yield return ClearRelay(true);
-            Require(loop.BoardOpen && owner.State.RelayMilestone && owner.State.Balance==1 && owner.State.CharacterId==identity,"live completion lost identity/reward");
+            Require(loop.BoardOpen && owner.State.RelayMilestone && owner.State.Balance==1 && owner.State.CharacterId==identity
+                && owner.HasUnsavedProgress,"live completion lost identity, reward or unsaved indication");
             yield return Click("Choose your specialization");
             Require(!loop.BoardOpen && owner.MenuOpen,"debrief button did not open development");
             yield return Click(DevelopmentIds.Momentum,1);
@@ -263,7 +264,8 @@ namespace EvolvingRPG.Editor
             int discoveryPoint=owner.State.Knowledge==DiscoveryKnowledge.Revealed ? 1 : 0;
             Require(loop.Attempt.Outcome==ExpeditionPhase.Completed && !loop.Attempt.PointAwarded && owner.State.Balance==discoveryPoint
                 && !owner.State.RetaliationLearned && !owner.RetaliationActive
-                && owner.State.RelayMilestone && owner.State.CharacterId==identity && owner.State.ExperienceCount>baselineFacts,
+                && owner.State.RelayMilestone && owner.State.CharacterId==identity && owner.State.ExperienceCount>baselineFacts
+                && owner.HasUnsavedProgress,
                 "live repeat duplicated the reward, lost identity, or did not record specialized practice");
             File.AppendAllText(Report,"PASS Live journey through F, board/debrief buttons, investment, save, fresh start, load, Tab and second restoration.\n");
             Require(owner.SaveSlot("A") && owner.LoadSlot("A") && owner.State.ExperienceCount>baselineFacts,
@@ -308,14 +310,16 @@ namespace EvolvingRPG.Editor
         {
             yield return Click("Review save A",-1);
             yield return Click("Confirm save");
-            Require(owner.InspectSaveSlot("A").CharacterId==identity,"save buttons did not persist the earned Warrior");
+            Require(owner.InspectSaveSlot("A").CharacterId==identity && !owner.HasUnsavedProgress && owner.SaveStatus.Contains("slot A"),
+                "save buttons did not persist and acknowledge the earned Warrior");
             yield return Click("Create fresh experimental character");
             yield return Click("Confirm fresh character (unsaved current character replaced)");
-            Require(owner.State.CharacterId!=identity && owner.State.Primary=="" && owner.State.Balance==0
+            Require(owner.State.CharacterId!=identity && owner.State.Primary=="" && owner.State.Balance==0 && !owner.HasUnsavedProgress
                 && !owner.State.RetaliationLearned && owner.State.Exchanges==0,"fresh controls inherited the old Warrior");
             yield return Click("Review load A");
             yield return Click("Confirm load");
-            Require(owner.State.CharacterId==identity,"load buttons did not restore the earned Warrior");
+            Require(owner.State.CharacterId==identity && !owner.HasUnsavedProgress && owner.SaveStatus.Contains("slot A"),
+                "load buttons did not restore and acknowledge the earned Warrior");
         }
         static IEnumerator ProveOwnedReturn(string identity)
         {

@@ -46,10 +46,10 @@ namespace EvolvingRPG.Expeditions
                 yield return null; yield return null;
                 if (!loop.Return(ExpeditionPhase.Completed) || !loop.Attempt.PointAwarded || owner.State.Balance != 1
                     || !owner.Purchase(owner.State.PreviewPurchase(DevelopmentIds.Momentum)) || !owner.SaveSlot("A")
-                    || !owner.ConfigureHeavy(DevelopmentIds.Baseline, false) || !owner.SaveSlot("A")
-                    || !owner.ConfigureHeavy(DevelopmentIds.Momentum, false))
+                    || !owner.ConfigureHeavy(DevelopmentIds.Baseline, false) || !owner.SaveSlot("A") || owner.HasUnsavedProgress
+                    || !owner.ConfigureHeavy(DevelopmentIds.Momentum, false) || !owner.HasUnsavedProgress)
                 { Fail("first restoration, deliberate Momentum purchase or save failed: " + owner.Message); yield break; }
-                if (!loop.Deploy(ExpeditionAttempt.Priority) || !loop.InMission || owner.SaveSlot("A"))
+                if (!loop.Deploy(ExpeditionAttempt.Priority) || !loop.InMission || owner.SaveSlot("A") || !owner.HasUnsavedProgress)
                 { Fail("interrupted-attempt fixture did not reject mid-mission saving"); yield break; }
                 Debug.Log("PASS Relay restart write: " + owner.State.CharacterId + " saved; exiting during an active Priority attempt.");
             }
@@ -60,6 +60,7 @@ namespace EvolvingRPG.Expeditions
                 if (!slot.CanLoad || slot.UsesBackup != (mode == "recover") || !owner.LoadSlot("A")
                     || owner.State.CharacterId != slot.CharacterId || !owner.State.RelayMilestone
                     || owner.State.Heavy != expectedHeavy || !owner.MomentumOwned || owner.State.Balance != 0 || owner.State.Granted != 1
+                    || owner.HasUnsavedProgress || !owner.SaveStatus.Contains("slot A")
                     || loop.Attempt != null || owner.GetComponent<RetaliatoryMomentumTrial>().Opportunity.HasValue
                     || owner.GetComponent<CombatActions>().CommittedContext.HasValue)
                 { Fail("reload did not restore the saved milestone and owned build without a mission or commitment"); yield break; }
@@ -67,7 +68,8 @@ namespace EvolvingRPG.Expeditions
                 {
                     if (slot.CanSave || owner.SaveSlot("A"))
                     { Fail("backup recovery allowed an overwrite of the damaged latest file"); yield break; }
-                    if (!owner.SaveSlot("B") || owner.InspectSaveSlot("B").CharacterId != owner.State.CharacterId)
+                    if (!owner.SaveSlot("B") || owner.InspectSaveSlot("B").CharacterId != owner.State.CharacterId
+                        || owner.HasUnsavedProgress || !owner.SaveStatus.Contains("slot B"))
                     { Fail("backup recovery could not save the restored Warrior to another slot"); yield break; }
                     Debug.Log("PASS Relay restart recover: " + owner.State.CharacterId + " restored from backup and saved to B; damaged latest protected.");
                 }

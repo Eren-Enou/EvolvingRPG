@@ -30,6 +30,12 @@ namespace EvolvingRPG.Progression
         CharacterSaveStore saves;
         ICharacterDevelopmentBoundary boundary;
         public string SaveLocation => saves?.Location;
+        int checkpointRevision;
+        string checkpointSlot;
+        public bool HasUnsavedProgress => State != null && State.Revision != checkpointRevision;
+        public string SaveStatus => HasUnsavedProgress ? "Unsaved progress. Save before exiting to keep it."
+            : checkpointSlot != null ? $"No new progress since slot {checkpointSlot}."
+            : "Fresh Warrior. Resume an existing save in Saved Warriors.";
         readonly InputAction inspect = new InputAction("InspectDevelopment", InputActionType.Button, "<Keyboard>/tab");
         public CharacterDevelopmentState State { get; private set; }
         // A load replaces the record even when its stable character ID is unchanged.
@@ -52,6 +58,7 @@ namespace EvolvingRPG.Progression
             mouseLook = GetComponent<PlaygroundMouseLook>(); playerInput = GetComponent<PlayerInput>();
             boundary = GetComponent<ICharacterDevelopmentBoundary>();
             State = new CharacterDevelopmentState(initialFixturePoints); spawn = transform.position;
+            RememberCheckpoint(null);
             if (initialFixturePoints == 0) Message = "Fresh Warrior: earn a mission milestone point before making a deliberate investment.";
             Review = new CombatActionReview(actions, transform);
             Experience = new HeavyExperienceCollector(actions, GetComponent<CombatVitality>(), () => State, ExperienceProfile);
@@ -106,6 +113,7 @@ namespace EvolvingRPG.Progression
         {
             if (!CanDevelop) { Message = "Return to the hub or safe spawn before creating a fresh character."; return false; }
             State = new CharacterDevelopmentState(initialFixturePoints); discovery.RestoreCharacterKnowledge(0); Apply();
+            RememberCheckpoint(null);
             Review.Clear();
             Experience.ReplaceCharacter();
             Message = "Fresh character: no knowledge, purchases or active evolution. Unsaved previous character was replaced.";
@@ -123,7 +131,9 @@ namespace EvolvingRPG.Progression
         public bool SaveSlot(string slot)
         {
             if (!CanDevelop) { Message = "Save only at safe spawn while ready."; return false; }
-            bool success = saves.Save(slot, State, out string message); Message = message; return success;
+            bool success = saves.Save(slot, State, out string message); Message = message;
+            if (success) RememberCheckpoint(slot);
+            return success;
         }
         public CharacterSaveStore.SlotPreview InspectSaveSlot(string slot) => saves.Inspect(slot);
         public bool LoadSlot(string slot)
@@ -135,7 +145,13 @@ namespace EvolvingRPG.Progression
             Review.Clear();
             Experience.ReplaceCharacter();
             discovery.RestoreCharacterKnowledge(State.Exchanges); Apply(); Message = message;
+            RememberCheckpoint(slot);
             CharacterRecordReplaced?.Invoke(); return true;
+        }
+        void RememberCheckpoint(string slot)
+        {
+            checkpointSlot = slot;
+            checkpointRevision = State.Revision;
         }
         void Apply()
         {

@@ -109,6 +109,7 @@ namespace EvolvingRPG.Progression
         {
             if (slots == null) RefreshSlots();
             GUILayout.Label("Saved Warriors");
+            GUILayout.Label(character.SaveStatus);
             if (GUILayout.Button("Refresh saved Warriors")) { RefreshSlots(); pendingSlot = null; slotNotice = null; }
             if (slotNotice != null) GUILayout.Label(slotNotice);
             foreach (var slot in slots)

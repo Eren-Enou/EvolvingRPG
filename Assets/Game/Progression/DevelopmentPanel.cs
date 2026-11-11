@@ -14,9 +14,18 @@ namespace EvolvingRPG.Progression
         int pendingRevision;
         string slotNotice;
         Vector2 scroll;
+        #if UNITY_EDITOR
+        // The native check observes laid-out button positions; it cannot invoke the slot operations.
+        public static event System.Action<DevelopmentPanel, string, Vector2> SlotButtonRepainted;
+        Vector2 gameViewOrigin;
+        #endif
         public void Configure(OwnedCharacter owner) => character = owner;
         void OnGUI()
         {
+            #if UNITY_EDITOR
+            if (SlotButtonRepainted != null && Event.current.type == EventType.Repaint)
+                gameViewOrigin = GUIUtility.GUIToScreenPoint(Vector2.zero);
+            #endif
             bool wrap = GUI.skin.label.wordWrap; int depth = GUI.depth;
             try { GUI.skin.label.wordWrap = true; if (character != null && character.MenuOpen) GUI.depth = -20; Draw(); }
             finally { GUI.skin.label.wordWrap = wrap; GUI.depth = depth; }
@@ -119,9 +128,9 @@ namespace EvolvingRPG.Progression
                 GUILayout.BeginHorizontal();
                 bool enabled = GUI.enabled;
                 GUI.enabled = enabled && slot.CanLoad;
-                if (GUILayout.Button($"Review load {slot.Slot}")) ReviewSlot(slot, state, true);
+                if (SlotButton($"Review load {slot.Slot}")) ReviewSlot(slot, state, true);
                 GUI.enabled = enabled && slot.CanSave && !state.HasUnresolvedContent;
-                if (GUILayout.Button($"Review save {slot.Slot}")) ReviewSlot(slot, state, false);
+                if (SlotButton($"Review save {slot.Slot}")) ReviewSlot(slot, state, false);
                 GUI.enabled = enabled;
                 GUILayout.EndHorizontal();
             }
@@ -133,7 +142,7 @@ namespace EvolvingRPG.Progression
                 : $"Save Warrior {current} to slot {selected.Slot}?"
                     + (selected.HasLatest ? $" This replaces {SavedWarrior(selected)}; the previous save becomes the backup."
                         : selected.UsesBackup ? " The existing backup is preserved." : ""));
-            if (GUILayout.Button(loadingSlot ? "Confirm load" : "Confirm save"))
+            if (SlotButton(loadingSlot ? "Confirm load" : "Confirm save"))
             {
                 pendingSlot = null;
                 if (character.State != state || state.Revision != pendingRevision || !selected.Equals(character.InspectSaveSlot(selected.Slot)))
@@ -142,7 +151,17 @@ namespace EvolvingRPG.Progression
                 else character.SaveSlot(selected.Slot);
                 RefreshSlots();
             }
-            if (GUILayout.Button("Cancel slot action")) pendingSlot = null;
+            if (SlotButton("Cancel slot action")) pendingSlot = null;
+        }
+
+        bool SlotButton(string label)
+        {
+            bool clicked = GUILayout.Button(label);
+            #if UNITY_EDITOR
+            if (SlotButtonRepainted != null && Event.current.type == EventType.Repaint && GUI.enabled)
+                SlotButtonRepainted(this, label, GUIUtility.GUIToScreenPoint(GUILayoutUtility.GetLastRect().center) - gameViewOrigin);
+            #endif
+            return clicked;
         }
 
         void ReviewSlot(CharacterSaveStore.SlotPreview slot, CharacterDevelopmentState state, bool load)

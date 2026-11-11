@@ -32,6 +32,7 @@ namespace EvolvingRPG.Expeditions
         public bool InMission => Attempt != null && Attempt.Phase == ExpeditionPhase.InProgress;
         public bool AllowsDevelopment => !InMission;
         public bool BoardOpen { get; private set; }
+        public bool AwaitingCursorCapture => !character.MenuOpen && Cursor.lockState != CursorLockMode.Locked;
         public event Action<bool> TechniquesRequested;
         public string Report { get; private set; } = "Restore the relay to earn your first development point.";
         public string FieldObjective
@@ -274,13 +275,15 @@ namespace EvolvingRPG.Expeditions
             GUILayout.BeginArea(new Rect(12, 12, Mathf.Min(430, Screen.width - 24), Screen.height - 24));
             GUILayout.BeginVertical(GUI.skin.box);
             GUILayout.Label(InMission ? ContractTitle(Attempt.Contract) : "Relay Outpost", title);
+            bool awaitingCapture = AwaitingCursorCapture;
+            if (awaitingCapture) GUILayout.Label("Click the game to resume movement and mouse look.", copy);
             if (InMission)
             {
                 GUILayout.Label(FieldObjective, copy);
                 string guardLabel = Attempt.Contract == ExpeditionAttempt.Priority ? "Guarded (optional): " : "Guarded: ";
                 GUILayout.Label(guardLabel + DefenderCue(guarded, guardHealth) + "   ·   Fast: " + DefenderCue(fast, fastHealth), copy);
                 GUILayout.Label($"Health {vitality.Health:0}/{vitality.MaximumHealth:0}   ·   Stamina {stamina.Current:0}/{stamina.Maximum:0}", copy);
-                GUILayout.Label(ActionCue(), copy);
+                if (!awaitingCapture || actions.Busy || vitality.Staggered) GUILayout.Label(ActionCue(), copy);
                 if (retaliation != null && retaliation.OpportunityReady)
                 {
                     string target = retaliation.Opportunity.Value.Source.GuardedArchetype ? "guarded fighter" : "fast fighter";

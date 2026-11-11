@@ -80,12 +80,8 @@ namespace EvolvingRPG.Editor
             File.WriteAllText(report, "Focused Input System Tab check; leaves Play mode with panel open for visual inspection.\n");
             bool reviewFixture = SessionState.GetBool("EvolvingRPG.PanelReview", false);
             bool runSlotChecks = SessionState.GetBool("EvolvingRPG.PanelExitCheck", false);
-            var panel = UnityEngine.Object.FindAnyObjectByType<DevelopmentPanel>();
             var buttons = new Dictionary<string, Vector2>();
-            void ObserveButton(DevelopmentPanel view, string label, Vector2 center)
-            {
-                if (view == panel) buttons[label] = center;
-            }
+            void ObserveButton(string label, Vector2 center) => buttons[label] = center;
             void Click(string label)
             {
                 if (!buttons.TryGetValue(label, out var center) || !new Rect(0, 0, Screen.width, Screen.height).Contains(center))
@@ -105,7 +101,7 @@ namespace EvolvingRPG.Editor
                 var breaker = Warrior(DevelopmentIds.Breaker);
                 Require(store.Save("A", momentum, out _) && store.Save("B", breaker, out _), "could not seed isolated slot fixtures");
                 slotChecks = ExerciseSlots(owner, store, momentum, breaker, Click, buttons.ContainsKey, report);
-                DevelopmentPanel.SlotButtonRepainted += ObserveButton;
+                JourneyGui.ButtonRepainted += ObserveButton;
             }
             bool pressed = false; int stage = reviewFixture ? -2 : 0, frame = -1; float started = Time.time;
             double deadline = EditorApplication.timeSinceStartup + 15;
@@ -159,7 +155,7 @@ namespace EvolvingRPG.Editor
                 catch (Exception e) { File.AppendAllText(report, "FAIL " + e + "\n"); finished = failed = true; }
                 if (!finished) return;
                 InputSystem.onBeforeUpdate -= inject; EditorApplication.update -= tick;
-                DevelopmentPanel.SlotButtonRepainted -= ObserveButton;
+                JourneyGui.ButtonRepainted -= ObserveButton;
                 action.RemoveAllBindingOverrides(); InputSystem.RemoveDevice(keyboard);
                 if (reviewFixture && !failed)
                     typeof(DevelopmentPanel).GetField("scroll", BindingFlags.NonPublic | BindingFlags.Instance)

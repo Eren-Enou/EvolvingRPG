@@ -43,7 +43,19 @@ namespace EvolvingRPG.Expeditions
             yield return new WaitForSecondsRealtime(.4f);
             if (!owner.CanDevelop || !CameraFollows(owner.transform))
             { Fail("return did not restore safe hub and camera"); yield break; }
-            Debug.Log($"PASS Relay player smoke: hub, board, deployment, {travel:0.00}m dodge, abandon and camera return. No save access.");
+            if (!loop.Deploy(ExpeditionAttempt.Priority))
+            { Fail("Priority deployment rejected"); yield break; }
+            yield return new WaitForSecondsRealtime(1f);
+            var defenders = UnityEngine.Object.FindObjectsByType<SandboxEnemy>();
+            if (!loop.InMission || defenders.Length != 2 || Array.Exists(defenders, defender => defender.Phase != EnemyPhase.Idle))
+            {
+                string states = string.Join("; ", Array.ConvertAll(defenders, defender => $"{defender.name}: {defender.Phase} at {defender.transform.position}"));
+                Fail($"Priority arrival was not calm: mission={loop.InMission}, Warrior={owner.transform.position}, defenders={defenders.Length}: {states}");
+                yield break;
+            }
+            if (!loop.Return(ExpeditionPhase.Abandoned) || !loop.BoardOpen || owner.State.Balance != 0)
+            { Fail("Priority abandon did not restore the no-reward board"); yield break; }
+            Debug.Log($"PASS Relay player smoke: hub, board, deployment, {travel:0.00}m dodge, abandon and camera return; Priority arrival stayed calm. No save access.");
             Application.Quit(0);
         }
 

@@ -17,7 +17,8 @@ namespace EvolvingRPG.Expeditions
         [SerializeField] SandboxEnemy guarded, fast;
         [SerializeField] Transform board, development, saveStation, relay, arrival;
         [SerializeField, Min(.5f)] float interactionRadius = 3f;
-        [SerializeField] Vector3 priorityGuardPost = new Vector3(0, .05f, 1);
+        // Leave room to read the objective before entering the guard's 8 m awareness radius.
+        [SerializeField] Vector3 priorityGuardPost = new Vector3(0, .05f, 2);
         [SerializeField] Vector3 priorityFastPost = new Vector3(7, .05f, 6);
         readonly InputAction interact = new InputAction("ExpeditionInteract", InputActionType.Button, "<Keyboard>/f");
         CombatActions actions;
@@ -181,6 +182,7 @@ namespace EvolvingRPG.Expeditions
         {
             if (character == null || character.State == null || character.MenuOpen && !BoardOpen) return;
             if (Screen.width < 80 || Screen.height < 80) return;
+            JourneyGui.Begin();
             copy ??= new GUIStyle(GUI.skin.label) { wordWrap = true };
             title ??= new GUIStyle(copy) { fontStyle = FontStyle.Bold, fontSize = 16 };
             if (BoardOpen && character.MenuOpen) DrawBoard();
@@ -202,25 +204,25 @@ namespace EvolvingRPG.Expeditions
             GUILayout.Label(Report, copy);
             if (Attempt?.PointAwarded == true && character.State.Balance > 0)
             {
-                if (GUILayout.Button("Choose your specialization")) BoardOpen = false;
+                if (JourneyGui.Button("Choose your specialization")) BoardOpen = false;
             }
             else if (Attempt != null && Attempt.Outcome != ExpeditionPhase.Completed)
             {
-                if (GUILayout.Button("Retry " + ContractTitle(Attempt.Contract))) Deploy(Attempt.Contract);
+                if (JourneyGui.Button("Retry " + ContractTitle(Attempt.Contract))) Deploy(Attempt.Contract);
             }
             GUILayout.Space(8);
             GUILayout.Label("Restore Relay", title);
             GUILayout.Label("Defeat both defenders and activate the blue relay. " + (character.State.RelayMilestone
                 ? "First restoration reward already earned." : "First clear earns one development point."), copy);
-            if (GUILayout.Button("Deploy: Restore Relay")) Deploy(ExpeditionAttempt.Relay);
+            if (JourneyGui.Button("Deploy: Restore Relay")) Deploy(ExpeditionAttempt.Relay);
             GUILayout.Space(8);
             GUILayout.Label("Priority Interdiction", title);
             GUILayout.Label("The guard holds the center lane. Take the wider right lane to try to isolate the fast fighter, or clear the guard first. Defeat the fast fighter and activate the relay. No completion point.", copy);
-            if (GUILayout.Button("Deploy: Priority Interdiction")) Deploy(ExpeditionAttempt.Priority);
+            if (JourneyGui.Button("Deploy: Priority Interdiction")) Deploy(ExpeditionAttempt.Priority);
             GUILayout.Space(8);
             string practice = NextPractice();
             if (practice != null) GUILayout.Label(practice, copy);
-            if (GUILayout.Button("Inspect Warrior / Save and Load")) BoardOpen = false;
+            if (JourneyGui.Button("Inspect Warrior / Save and Load")) BoardOpen = false;
             if (GUILayout.Button("Return to the outpost")) { character.CloseMenu(); BoardOpen = false; }
             GUILayout.Label("Save to keep your progress between sessions. Loading an older record replaces unsaved progress.", copy);
             showDiagnostics = GUILayout.Toggle(showDiagnostics, "Show combat diagnostics in the field");

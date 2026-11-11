@@ -1108,6 +1108,8 @@ MonoBehaviour:
   relay: {fileID: 1184063653}
   arrival: {fileID: 1674616244}
   interactionRadius: 3
+  priorityGuardPost: {x: 0, y: 0.05, z: 2}
+  priorityFastPost: {x: 7, y: 0.05, z: 6}
 --- !u!1 &348073746
 GameObject:
   m_ObjectHideFlags: 0

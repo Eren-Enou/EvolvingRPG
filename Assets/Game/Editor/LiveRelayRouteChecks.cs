@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using EvolvingRPG.Combat;
 using EvolvingRPG.Expeditions;
 using EvolvingRPG.Progression;
@@ -10,6 +11,8 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.LowLevel;
+using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.SceneManagement;
 
 namespace EvolvingRPG.Editor
@@ -31,6 +34,11 @@ namespace EvolvingRPG.Editor
         static ContextualDiscovery discovery;
         static RetaliatoryMomentumTrial retaliation;
         static StarterAssetsInputs inputs;
+        static Keyboard journeyKeyboard;
+        static InputAction journeyInteract, journeyInspect;
+        static EditorWindow gameView;
+        static Action pendingGuiInput;
+        static readonly Dictionary<string, Vector2> journeyButtons = new Dictionary<string, Vector2>();
         static int frame;
         static float resumeAt,oldStep,damageTaken;
         static bool passed,oldBackground,stopRequested;
@@ -48,7 +56,7 @@ namespace EvolvingRPG.Editor
             ExpeditionSceneBuilder.Create(); EditorSceneManager.OpenScene(ExpeditionSceneBuilder.ScenePath);
             Directory.CreateDirectory("Logs"); File.WriteAllText(Report,"Unity "+Application.unityVersion+" / live controller route / "+DateTime.UtcNow.ToString("O")+"\n");
             SessionState.SetBool(Requested,true);
-            EditorWindow.GetWindow(typeof(EditorWindow).Assembly.GetType("UnityEditor.GameView")).Focus();
+            gameView=EditorWindow.GetWindow(typeof(EditorWindow).Assembly.GetType("UnityEditor.GameView")); gameView.Focus();
             EditorApplication.EnterPlaymode();
         }
         static void Changed(PlayModeStateChange state)
@@ -70,6 +78,11 @@ namespace EvolvingRPG.Editor
                 if(vitality!=null) vitality.HitReceived-=Incoming;
                 if(evidence!=null) evidence.Observed-=ReportEvasion;
                 if(discovery!=null) discovery.Ledger.Changed-=ReportDiscovery;
+                JourneyGui.ButtonRepainted-=ObserveButton; journeyButtons.Clear(); pendingGuiInput=null;
+                journeyInteract?.RemoveBindingOverride(0); journeyInspect?.RemoveBindingOverride(0);
+                journeyInteract=journeyInspect=null;
+                if(journeyKeyboard!=null) InputSystem.RemoveDevice(journeyKeyboard);
+                journeyKeyboard=null;
                 Time.captureDeltaTime=oldStep; Application.runInBackground=oldBackground;
             }
             if(state==PlayModeStateChange.EnteredEditMode && SessionState.GetBool(Active,false))
@@ -85,6 +98,46 @@ namespace EvolvingRPG.Editor
         static void Capture(string text,string stack,LogType type)
         { if(type==LogType.Error || type==LogType.Exception || type==LogType.Assert) errors.Add(text+"\n"+stack); }
         static void Incoming(HitData _,HitResolution result) => damageTaken+=result.DamageApplied;
+        static void ObserveButton(string key, Vector2 center) => journeyButtons[key]=center;
+
+        static IEnumerator Press(Key key)
+        {
+            InputSystem.QueueStateEvent(journeyKeyboard,new KeyboardState(key));
+            yield return .05f;
+            InputSystem.QueueStateEvent(journeyKeyboard,new KeyboardState());
+            yield return .05f;
+        }
+
+        static IEnumerator Click(string key,int scrollDirection=0)
+        {
+            double until=EditorApplication.timeSinceStartup+6, nextScroll=0;
+            Vector2 center;
+            while(!journeyButtons.TryGetValue(key,out center) || center.x<12 || center.x>=Screen.width-12
+                || center.y<(scrollDirection!=0 ? 150 : 0) || center.y>=Screen.height-22)
+            {
+                double now=EditorApplication.timeSinceStartup;
+                Require(now<until,$"button not reachable: {key}, last position {center}, Game view {Screen.width}x{Screen.height}");
+                if(scrollDirection!=0 && now>=nextScroll)
+                {
+                    journeyButtons.Clear();
+                    pendingGuiInput=()=>EditorGUIUtility.QueueGameViewInputEvent(new Event { type=EventType.ScrollWheel,
+                        mousePosition=new Vector2(Mathf.Min(250,Screen.width*.45f),Screen.height*.6f), delta=new Vector2(0,scrollDirection*5) });
+                    nextScroll=now+.16;
+                }
+                if(gameView!=null) gameView.Repaint();
+                yield return null;
+            }
+            journeyButtons.Clear();
+            File.AppendAllText(Report,$"CLICK {key} at {center} / {Screen.width}x{Screen.height} / cursor {Cursor.lockState}\n");
+            pendingGuiInput=()=>
+            {
+                EditorGUIUtility.QueueGameViewInputEvent(new Event { type=EventType.MouseDown, button=0, clickCount=1, mousePosition=center });
+                EditorGUIUtility.QueueGameViewInputEvent(new Event { type=EventType.MouseUp, button=0, clickCount=1, mousePosition=center });
+            };
+            while(pendingGuiInput!=null) yield return null;
+            double renderUntil=EditorApplication.timeSinceStartup+.2;
+            while(EditorApplication.timeSinceStartup<renderUntil) yield return null;
+        }
         static void ReportEvasion(EvasionResult result)
         {
             if (!owner.MomentumOwned) return;
@@ -126,6 +179,13 @@ namespace EvolvingRPG.Editor
             if(!stopRequested && EditorApplication.timeSinceStartup>deadline)
             { File.AppendAllText(Report,"FAIL Live route wall-clock deadline.\n"); stopRequested=true; }
             if(stopRequested) EditorApplication.ExitPlaymode();
+            else if(pendingGuiInput!=null)
+            {
+                var dispatch=pendingGuiInput;
+                pendingGuiInput=null;
+                dispatch();
+                if(gameView!=null) gameView.Repaint();
+            }
         }
         static void Tick()
         {
@@ -155,15 +215,32 @@ namespace EvolvingRPG.Editor
             retaliation=owner.GetComponent<RetaliatoryMomentumTrial>();
             evidence.Observed+=ReportEvasion; discovery.Ledger.Changed+=ReportDiscovery;
             owner.UseTestSaveDirectory(Path.GetFullPath(Path.Combine("Logs","LiveRouteSaves",Guid.NewGuid().ToString("N"))));
+            journeyKeyboard=InputSystem.AddDevice<Keyboard>("LiveRelayJourneyKeyboard");
+            const BindingFlags fields=BindingFlags.Instance|BindingFlags.NonPublic;
+            journeyInteract=(InputAction)typeof(ExpeditionLoop).GetField("interact",fields).GetValue(loop);
+            journeyInspect=(InputAction)typeof(OwnedCharacter).GetField("inspect",fields).GetValue(owner);
+            journeyInteract.ApplyBindingOverride(0,journeyKeyboard.path+"/f");
+            journeyInspect.ApplyBindingOverride(0,journeyKeyboard.path+"/tab");
+            JourneyGui.ButtonRepainted+=ObserveButton;
             Require(owner.State.Balance==0 && owner.State.Primary=="","fresh Warrior unexpectedly funded/specialized");
             yield return Walk(new Vector3(55,.05f,2.5f),.3f);
-            Require(loop.OpenBoard() && loop.Deploy(ExpeditionAttempt.Relay),"walked board/deployment failed");
+            yield return Press(Key.F);
+            Require(loop.BoardOpen && owner.MenuOpen,"F at the board did not open the mission list");
+            yield return Click("Deploy: Restore Relay");
+            Require(loop.InMission && !owner.MenuOpen && loop.Attempt.Contract==ExpeditionAttempt.Relay,
+                $"board button did not deploy Restore Relay: board={loop.BoardOpen}, menu={owner.MenuOpen}, safe={owner.CanDevelop}, mission={loop.InMission}");
             string identity=owner.State.CharacterId,attempt=loop.Attempt.Id;
             File.AppendAllText(Report,"DEPLOY "+attempt+" / Warrior "+identity+"\n");
-            yield return ClearRelay();
+            yield return ClearRelay(true);
             Require(loop.BoardOpen && owner.State.RelayMilestone && owner.State.Balance==1 && owner.State.CharacterId==identity,"live completion lost identity/reward");
-            Require(owner.Purchase(owner.State.PreviewPurchase(DevelopmentIds.Momentum)) && owner.SaveSlot("A"),"earned investment/save failed");
-            Require(owner.FreshCharacter() && owner.LoadSlot("A") && owner.State.CharacterId==identity
+            yield return Click("Choose your specialization");
+            Require(!loop.BoardOpen && owner.MenuOpen,"debrief button did not open development");
+            yield return Click(DevelopmentIds.Momentum,1);
+            Require(owner.State.Balance==1 && owner.State.Primary=="","review spent the earned point before confirmation");
+            yield return Click("Confirm investment");
+            Require(owner.State.Heavy==DevelopmentIds.Momentum && owner.State.Balance==0,"confirmed investment did not equip Momentum");
+            yield return SaveAndReloadViaPanel(identity);
+            Require(owner.State.CharacterId==identity
                 && owner.State.Primary==DevelopmentIds.Momentum && owner.State.Balance==0 && owner.State.RelayMilestone,"live-earned character roundtrip failed");
             yield return null;
             File.AppendAllText(Report,"RESTORE attempt="+(loop.Attempt==null ? "none" : loop.Attempt.Phase.ToString())
@@ -171,17 +248,24 @@ namespace EvolvingRPG.Editor
             Require(loop.Attempt==null && !actor.Busy && !actor.CommittedContext.HasValue,"load retained an attempt or action");
             Require(owner.State.ExperienceCount>0,"live fights produced no retained Heavy experience");
             int baselineFacts=owner.State.ExperienceCount;
-            Require(loop.Deploy(ExpeditionAttempt.Relay) && loop.Attempt.Id!=attempt && owner.State.Heavy==DevelopmentIds.Momentum,
+            yield return Press(Key.Tab);
+            Require(!owner.MenuOpen,"Tab did not leave development after load");
+            yield return Walk(new Vector3(55,.05f,2.5f),.3f);
+            yield return Press(Key.F);
+            Require(loop.BoardOpen,"F did not reopen the board after load");
+            yield return Click("Deploy: Restore Relay");
+            Require(loop.InMission && loop.Attempt.Id!=attempt && owner.State.Heavy==DevelopmentIds.Momentum,
                 "repeat deployment did not use the restored Warrior and a new attempt");
             Require(owner.TryPreviewHeavy(DevelopmentIds.Momentum,out var momentum) && momentum.AdvanceDistance>0
                 && actor.HeavyAttack.DisplayName==momentum.DisplayName,"repeat did not equip the owned advancing Heavy");
             File.AppendAllText(Report,"REPEAT "+loop.Attempt.Id+" / "+momentum.DisplayName+"\n");
-            yield return ClearRelay();
+            yield return ClearRelay(true);
             int discoveryPoint=owner.State.Knowledge==DiscoveryKnowledge.Revealed ? 1 : 0;
             Require(loop.Attempt.Outcome==ExpeditionPhase.Completed && !loop.Attempt.PointAwarded && owner.State.Balance==discoveryPoint
                 && !owner.State.RetaliationLearned && !owner.RetaliationActive
                 && owner.State.RelayMilestone && owner.State.CharacterId==identity && owner.State.ExperienceCount>baselineFacts,
                 "live repeat duplicated the reward, lost identity, or did not record specialized practice");
+            File.AppendAllText(Report,"PASS Live journey through F, board/debrief buttons, investment, save, fresh start, load, Tab and second restoration.\n");
             Require(owner.SaveSlot("A") && owner.LoadSlot("A") && owner.State.ExperienceCount>baselineFacts,
                 "repeat experience did not survive explicit save and reload");
             Require(loop.Deploy(ExpeditionAttempt.Priority) && loop.Return(ExpeditionPhase.Abandoned),"post-load retry fixture failed");
@@ -220,24 +304,48 @@ namespace EvolvingRPG.Editor
             File.AppendAllText(Report,"PASS Both contracts cleared with Baseline, earned Momentum and earned Breaker; independent A/B ownership and histories restored.\n");
             yield return DefeatAfterPartialClear();
         }
+        static IEnumerator SaveAndReloadViaPanel(string identity)
+        {
+            yield return Click("Review save A",-1);
+            yield return Click("Confirm save");
+            Require(owner.InspectSaveSlot("A").CharacterId==identity,"save buttons did not persist the earned Warrior");
+            yield return Click("Create fresh experimental character");
+            yield return Click("Confirm fresh character (unsaved current character replaced)");
+            Require(owner.State.CharacterId!=identity && owner.State.Primary=="" && owner.State.Balance==0
+                && !owner.State.RetaliationLearned && owner.State.Exchanges==0,"fresh controls inherited the old Warrior");
+            yield return Click("Review load A");
+            yield return Click("Confirm load");
+            Require(owner.State.CharacterId==identity,"load buttons did not restore the earned Warrior");
+        }
         static IEnumerator ProveOwnedReturn(string identity)
         {
             Require(owner.State.Exchanges==3 && owner.State.Knowledge==DiscoveryKnowledge.Revealed && owner.State.Granted==2
                 && owner.State.Balance==1 && !owner.State.RetaliationLearned && !owner.RetaliationActive,
                 "live exchanges did not reveal exactly one unspent point and an unlearned return");
-            Require(owner.Purchase(owner.State.PreviewPurchase(DevelopmentIds.Retaliation)) && owner.State.RetaliationLearned
+            yield return Click("Inspect Warrior / Save and Load");
+            Require(owner.MenuOpen && !loop.BoardOpen,"return debrief did not open development");
+            yield return Click(DevelopmentIds.Retaliation,1);
+            Require(!owner.State.RetaliationLearned && owner.State.Balance==1,"return preview spent the point before confirmation");
+            yield return Click("Confirm investment");
+            Require(owner.State.RetaliationLearned
                 && !owner.RetaliationActive && owner.State.Balance==0,"learning the return failed or automatically equipped it");
-            Require(owner.ConfigureHeavy(DevelopmentIds.Momentum,true) && owner.SaveSlot("A")
-                && owner.FreshCharacter() && !owner.State.RetaliationLearned && owner.State.Exchanges==0
-                && owner.LoadSlot("A") && owner.State.CharacterId==identity && owner.State.RetaliationLearned && owner.RetaliationActive
+            yield return Click("Activate learned return",1);
+            Require(owner.RetaliationActive,"equip control did not activate the learned return");
+            yield return SaveAndReloadViaPanel(identity);
+            Require(owner.State.RetaliationLearned && owner.RetaliationActive
                 && owner.State.Exchanges==3 && !retaliation.Opportunity.HasValue && !actor.CommittedContext.HasValue,
                 "owned return did not survive reload independently of its temporary opportunity");
-            yield return ClearPriority(true,ReturnChoice.Ordinary);
+            yield return Press(Key.Tab);
+            Require(!owner.MenuOpen,"Tab did not leave development with the reloaded return");
+            yield return Walk(new Vector3(55,.05f,2.5f),.3f);
+            yield return Press(Key.F);
+            Require(loop.BoardOpen,"F did not open the board with the reloaded return");
+            yield return ClearPriority(true,ReturnChoice.Ordinary,true);
             Require(!retaliation.Opportunity.HasValue && !actor.CommittedContext.HasValue,"ordinary return left a transient opening in the hub");
-            yield return ClearPriority(true,ReturnChoice.Long);
+            yield return ClearPriority(true,ReturnChoice.Long,true);
             Require(owner.State.Granted==2 && owner.State.Balance==0 && !retaliation.Opportunity.HasValue && !actor.CommittedContext.HasValue,
                 "repeat contract inflated progression or leaked an opportunity on return");
-            File.AppendAllText(Report,"PASS Live discovery, distinct purchase and equip, save/reload, optional linked return and no temporary state inheritance.\n");
+            File.AppendAllText(Report,"PASS Live discovery, purchase and equip through distinct buttons, save/reload, optional linked return and no temporary state inheritance.\n");
         }
         static IEnumerator DefeatAfterPartialClear()
         {
@@ -261,12 +369,15 @@ namespace EvolvingRPG.Editor
                 "defeat lost retained experience, minted points, or kept a temporary action");
             yield return .25f;
             CheckCamera();
-            Require(loop.Deploy(ExpeditionAttempt.Relay) && loop.Attempt.Id!=failedId && !loop.Attempt.ObjectivesReady
-                && !guard.GetComponent<EnemyVitality>().Defeated && loop.Return(ExpeditionPhase.Abandoned),
-                "retry inherited defeated defenders or could not abandon at arrival");
-            File.AppendAllText(Report,"PASS Live defeat after defeating the guard; experience retained, no reward or inherited objective; retry and abandon succeeded.\n");
+            yield return Click("Retry Restore Relay");
+            Require(loop.InMission && loop.Attempt.Id!=failedId && !loop.Attempt.ObjectivesReady
+                && !guard.GetComponent<EnemyVitality>().Defeated,"retry inherited defeated defenders or did not deploy");
+            yield return Press(Key.F);
+            Require(!loop.InMission && loop.BoardOpen && loop.Attempt.Outcome==ExpeditionPhase.Abandoned,
+                "F at arrival did not abandon the new attempt");
+            File.AppendAllText(Report,"PASS Live defeat after defeating the guard; experience retained, no reward or inherited objective; retry button and F at arrival returned safely.\n");
         }
-        static IEnumerator ClearRelay()
+        static IEnumerator ClearRelay(bool viaStation=false)
         {
             yield return .25f;
             CheckCamera();
@@ -276,20 +387,30 @@ namespace EvolvingRPG.Editor
             yield return Walk(new Vector3(0,.05f,-3),.6f);
             yield return Walk(new Vector3(7,.05f,-2),.6f);
             yield return Fight(fast);
-            yield return CompleteAtRelay();
+            yield return CompleteAtRelay(viaStation);
         }
-        static IEnumerator ClearPriority(bool wideRoute,ReturnChoice choice=ReturnChoice.None)
+        static IEnumerator ClearPriority(bool wideRoute,ReturnChoice choice=ReturnChoice.None,bool viaPanel=false)
         {
-            Require(loop.Deploy(ExpeditionAttempt.Priority),"live priority deployment rejected");
+            if(viaPanel) yield return Click("Deploy: Priority Interdiction");
+            else Require(loop.Deploy(ExpeditionAttempt.Priority),"live priority deployment rejected");
+            Require(loop.InMission && loop.Attempt.Contract==ExpeditionAttempt.Priority,"priority board button did not deploy the expected contract");
             File.AppendAllText(Report,$"PRIORITY {actor.HeavyAttack.DisplayName} / {(wideRoute ? "wide route" : "center route")}\n");
             yield return .25f;
             CheckCamera();
             var (guard,fast)=Defenders();
             if(wideRoute)
             {
+                if(viaPanel)
+                {
+                    yield return .75f; // Give the player time to read the objective before choosing a lane.
+                    Require(guard.Phase==EnemyPhase.Idle && fast.Phase==EnemyPhase.Idle,
+                        $"priority arrival drew a defender before any movement: Warrior {owner.transform.position}, guard {guard.Phase} {guard.transform.position}, fast {fast.Phase} {fast.transform.position}");
+                    File.AppendAllText(Report,"PASS Priority arrival stays calm before the route choice.\n");
+                }
                 yield return Walk(new Vector3(10.5f,.05f,-7),.45f);
                 yield return Walk(new Vector3(10.5f,.05f,1),.55f);
-                Require(guard.Phase==EnemyPhase.Idle && fast.Phase!=EnemyPhase.Idle,"wide approach did not isolate the fast fighter");
+                Require(guard.Phase==EnemyPhase.Idle && fast.Phase!=EnemyPhase.Idle,
+                    $"wide approach did not isolate the fast fighter: guard={guard.Phase}, fast={fast.Phase}");
             }
             else
             {
@@ -301,7 +422,7 @@ namespace EvolvingRPG.Editor
             }
             yield return Fight(fast,choice);
             Require(guard.GetComponent<EnemyVitality>().Defeated!=wideRoute,"priority route used the wrong target order");
-            yield return CompleteAtRelay();
+            yield return CompleteAtRelay(viaPanel);
             Require(!loop.Attempt.PointAwarded && loop.Report.Contains(wideRoute ? "left the center guard standing" : "cleared the center guard"),
                 "priority completion paid a point or reported the wrong route outcome");
         }
@@ -313,11 +434,14 @@ namespace EvolvingRPG.Editor
             Require(guard!=null && fast!=null,"authored opponents missing");
             return (guard,fast);
         }
-        static IEnumerator CompleteAtRelay()
+        static IEnumerator CompleteAtRelay(bool viaStation=false)
         {
             yield return Walk(new Vector3(5,.05f,10),.5f); // Approach relay east of the central obstruction.
             yield return Walk(new Vector3(1.5f,.05f,10),.4f);
-            Require(loop.Attempt.ObjectivesReady && loop.Return(ExpeditionPhase.Completed),"walked relay completion rejected");
+            Require(loop.Attempt.ObjectivesReady,"walked relay reached before objective was ready");
+            if(viaStation) yield return Press(Key.F);
+            else Require(loop.Return(ExpeditionPhase.Completed),"walked relay completion rejected");
+            Require(!loop.InMission && loop.Attempt.Outcome==ExpeditionPhase.Completed,"relay interaction did not settle the expedition");
             yield return .25f;
             CheckCamera();
         }

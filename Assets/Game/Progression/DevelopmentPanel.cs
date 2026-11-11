@@ -14,18 +14,10 @@ namespace EvolvingRPG.Progression
         int pendingRevision;
         string slotNotice;
         Vector2 scroll;
-        #if UNITY_EDITOR
-        // The native check observes laid-out button positions; it cannot invoke the slot operations.
-        public static event System.Action<DevelopmentPanel, string, Vector2> SlotButtonRepainted;
-        Vector2 gameViewOrigin;
-        #endif
         public void Configure(OwnedCharacter owner) => character = owner;
         void OnGUI()
         {
-            #if UNITY_EDITOR
-            if (SlotButtonRepainted != null && Event.current.type == EventType.Repaint)
-                gameViewOrigin = GUIUtility.GUIToScreenPoint(Vector2.zero);
-            #endif
+            JourneyGui.Begin();
             bool wrap = GUI.skin.label.wordWrap; int depth = GUI.depth;
             try { GUI.skin.label.wordWrap = true; if (character != null && character.MenuOpen) GUI.depth = -20; Draw(); }
             finally { GUI.skin.label.wordWrap = wrap; GUI.depth = depth; }
@@ -66,12 +58,12 @@ namespace EvolvingRPG.Progression
             if (preview != null)
             {
                 GUILayout.Label("Confirm spending 1 point on: " + DevelopmentIds.Label(preview.Value.DevelopmentId) + " (preview revision " + preview.Value.Revision + ")");
-                if (GUILayout.Button("Confirm investment")) { character.Purchase(preview.Value); preview = null; }
-                if (GUILayout.Button("Cancel preview")) preview = null;
+                if (JourneyGui.Button("Confirm investment")) { character.Purchase(preview.Value); preview = null; }
+                if (JourneyGui.Button("Cancel preview")) preview = null;
             }
             scroll = GUILayout.BeginScrollView(scroll);
             DrawSaveSlots(state);
-            if (GUILayout.Button(confirmFresh ? "Confirm fresh character (unsaved current character replaced)" : "Create fresh experimental character"))
+            if (JourneyGui.Button(confirmFresh ? "Confirm fresh character (unsaved current character replaced)" : "Create fresh experimental character"))
             {
                 pendingSlot = null;
                 if (confirmFresh) { character.FreshCharacter(); preview = null; confirmFresh = false; }
@@ -128,9 +120,9 @@ namespace EvolvingRPG.Progression
                 GUILayout.BeginHorizontal();
                 bool enabled = GUI.enabled;
                 GUI.enabled = enabled && slot.CanLoad;
-                if (SlotButton($"Review load {slot.Slot}")) ReviewSlot(slot, state, true);
+                if (JourneyGui.Button($"Review load {slot.Slot}")) ReviewSlot(slot, state, true);
                 GUI.enabled = enabled && slot.CanSave && !state.HasUnresolvedContent;
-                if (SlotButton($"Review save {slot.Slot}")) ReviewSlot(slot, state, false);
+                if (JourneyGui.Button($"Review save {slot.Slot}")) ReviewSlot(slot, state, false);
                 GUI.enabled = enabled;
                 GUILayout.EndHorizontal();
             }
@@ -142,7 +134,7 @@ namespace EvolvingRPG.Progression
                 : $"Save Warrior {current} to slot {selected.Slot}?"
                     + (selected.HasLatest ? $" This replaces {SavedWarrior(selected)}; the previous save becomes the backup."
                         : selected.UsesBackup ? " The existing backup is preserved." : ""));
-            if (SlotButton(loadingSlot ? "Confirm load" : "Confirm save"))
+            if (JourneyGui.Button(loadingSlot ? "Confirm load" : "Confirm save"))
             {
                 pendingSlot = null;
                 if (character.State != state || state.Revision != pendingRevision || !selected.Equals(character.InspectSaveSlot(selected.Slot)))
@@ -151,17 +143,7 @@ namespace EvolvingRPG.Progression
                 else character.SaveSlot(selected.Slot);
                 RefreshSlots();
             }
-            if (SlotButton("Cancel slot action")) pendingSlot = null;
-        }
-
-        bool SlotButton(string label)
-        {
-            bool clicked = GUILayout.Button(label);
-            #if UNITY_EDITOR
-            if (SlotButtonRepainted != null && Event.current.type == EventType.Repaint && GUI.enabled)
-                SlotButtonRepainted(this, label, GUIUtility.GUIToScreenPoint(GUILayoutUtility.GetLastRect().center) - gameViewOrigin);
-            #endif
-            return clicked;
+            if (JourneyGui.Button("Cancel slot action")) pendingSlot = null;
         }
 
         void ReviewSlot(CharacterSaveStore.SlotPreview slot, CharacterDevelopmentState state, bool load)
@@ -189,10 +171,10 @@ namespace EvolvingRPG.Progression
             GUILayout.Label(state.Owns(id) ? "Learned" + (state.Heavy == id || id == DevelopmentIds.Retaliation && state.RetaliationActive ? " / Active" : " / Inactive") : state.Eligibility(id));
             if (!state.Owns(id))
             {
-                if (state.Eligibility(id).StartsWith("Available") && GUILayout.Button("Preview investment")) { preview = state.PreviewPurchase(id); }
+                if (state.Eligibility(id).StartsWith("Available") && JourneyGui.Button("Preview investment", id)) { preview = state.PreviewPurchase(id); }
             }
             else if (id == DevelopmentIds.Retaliation)
-            { if (GUILayout.Button(state.RetaliationActive ? "Deactivate return" : "Activate learned return")) character.ConfigureHeavy(DevelopmentIds.Momentum, !state.RetaliationActive); }
+            { if (JourneyGui.Button(state.RetaliationActive ? "Deactivate return" : "Activate learned return")) character.ConfigureHeavy(DevelopmentIds.Momentum, !state.RetaliationActive); }
             else if (GUILayout.Button("Select this learned Heavy")) character.ConfigureHeavy(id, false);
             GUILayout.EndVertical();
         }

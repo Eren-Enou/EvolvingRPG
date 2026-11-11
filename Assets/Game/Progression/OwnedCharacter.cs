@@ -113,6 +113,12 @@ namespace EvolvingRPG.Progression
         }
         #if UNITY_EDITOR
         public void UseTestSaveDirectory(string path) => saves = new CharacterSaveStore(path);
+        #else
+        internal void UseTestSaveDirectory(string path)
+        {
+            if (!Debug.isDebugBuild) throw new System.InvalidOperationException("Packaged test saves require a development build.");
+            saves = new CharacterSaveStore(path);
+        }
         #endif
         public bool SaveSlot(string slot)
         {

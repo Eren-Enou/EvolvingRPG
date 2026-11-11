@@ -1,7 +1,9 @@
 #if !UNITY_EDITOR
 using System;
 using System.Collections;
+using System.IO;
 using EvolvingRPG.Combat;
+using EvolvingRPG.Progression;
 using UnityEngine;
 
 namespace EvolvingRPG.Expeditions
@@ -12,11 +14,93 @@ namespace EvolvingRPG.Expeditions
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Start()
         {
-            if (!Debug.isDebugBuild || Array.IndexOf(Environment.GetCommandLineArgs(), "-evolvingRelaySmoke") < 0) return;
+            if (!Debug.isDebugBuild) return;
+            string[] args = Environment.GetCommandLineArgs();
+            int restart = Array.IndexOf(args, "-evolvingRelayRestart");
+            if (restart < 0 && Array.IndexOf(args, "-evolvingRelaySmoke") < 0) return;
             var loop = UnityEngine.Object.FindAnyObjectByType<ExpeditionLoop>();
             if (loop == null) { Fail("RelayOutpost is not the startup scene"); return; }
             Application.runInBackground = true;
-            loop.StartCoroutine(Exercise(loop));
+            if (restart < 0) { loop.StartCoroutine(Exercise(loop)); return; }
+            if (restart + 2 >= args.Length || !Guid.TryParseExact(args[restart + 2], "N", out var token)
+                || (args[restart + 1] != "write" && args[restart + 1] != "reload" && args[restart + 1] != "recover"))
+            { Fail("expected -evolvingRelayRestart write|reload|recover <test GUID>"); return; }
+            string root = Path.Combine(Path.GetTempPath(), "EvolvingRPG-RelayRestart-" + token.ToString("N"));
+            loop.StartCoroutine(RestartExercise(loop, args[restart + 1], root));
+        }
+
+        static IEnumerator RestartExercise(ExpeditionLoop loop, string mode, string root)
+        {
+            yield return new WaitForSecondsRealtime(.6f);
+            var owner = loop.Character;
+            string latest = Path.Combine(root, "character-a.json");
+            if (!owner.CanDevelop || loop.Attempt != null || owner.State.Balance != 0 || owner.State.Heavy != DevelopmentIds.Baseline)
+            { Fail("new process did not start as a fresh Warrior in the hub"); yield break; }
+            if (mode == "write" ? Directory.Exists(root) || File.Exists(root) : !File.Exists(latest) || !File.Exists(latest + ".bak"))
+            { Fail("unexpected isolated restart fixture files"); yield break; }
+            owner.UseTestSaveDirectory(root);
+            if (mode == "write")
+            {
+                if (!loop.Deploy(ExpeditionAttempt.Relay) || !PrepareRelayCompletion(loop))
+                { Fail("could not prepare first restoration fixture"); yield break; }
+                yield return null; yield return null;
+                if (!loop.Return(ExpeditionPhase.Completed) || !loop.Attempt.PointAwarded || owner.State.Balance != 1
+                    || !owner.Purchase(owner.State.PreviewPurchase(DevelopmentIds.Momentum)) || !owner.SaveSlot("A")
+                    || !owner.ConfigureHeavy(DevelopmentIds.Baseline, false) || !owner.SaveSlot("A")
+                    || !owner.ConfigureHeavy(DevelopmentIds.Momentum, false))
+                { Fail("first restoration, deliberate Momentum purchase or save failed: " + owner.Message); yield break; }
+                if (!loop.Deploy(ExpeditionAttempt.Priority) || !loop.InMission || owner.SaveSlot("A"))
+                { Fail("interrupted-attempt fixture did not reject mid-mission saving"); yield break; }
+                Debug.Log("PASS Relay restart write: " + owner.State.CharacterId + " saved; exiting during an active Priority attempt.");
+            }
+            else
+            {
+                var slot = owner.InspectSaveSlot("A");
+                string expectedHeavy = mode == "recover" ? DevelopmentIds.Momentum : DevelopmentIds.Baseline;
+                if (!slot.CanLoad || slot.UsesBackup != (mode == "recover") || !owner.LoadSlot("A")
+                    || owner.State.CharacterId != slot.CharacterId || !owner.State.RelayMilestone
+                    || owner.State.Heavy != expectedHeavy || !owner.MomentumOwned || owner.State.Balance != 0 || owner.State.Granted != 1
+                    || loop.Attempt != null || owner.GetComponent<RetaliatoryMomentumTrial>().Opportunity.HasValue
+                    || owner.GetComponent<CombatActions>().CommittedContext.HasValue)
+                { Fail("reload did not restore the saved milestone and owned build without a mission or commitment"); yield break; }
+                if (mode == "recover")
+                {
+                    if (slot.CanSave || owner.SaveSlot("A"))
+                    { Fail("backup recovery allowed an overwrite of the damaged latest file"); yield break; }
+                    if (!owner.SaveSlot("B") || owner.InspectSaveSlot("B").CharacterId != owner.State.CharacterId)
+                    { Fail("backup recovery could not save the restored Warrior to another slot"); yield break; }
+                    Debug.Log("PASS Relay restart recover: " + owner.State.CharacterId + " restored from backup and saved to B; damaged latest protected.");
+                }
+                else
+                {
+                    if (!owner.ConfigureHeavy(DevelopmentIds.Momentum, false)
+                        || !loop.Deploy(ExpeditionAttempt.Relay) || !PrepareRelayCompletion(loop))
+                    { Fail("could not prepare repeat restoration fixture"); yield break; }
+                    yield return null; yield return null;
+                    if (!loop.Return(ExpeditionPhase.Completed) || loop.Attempt.PointAwarded || owner.State.Granted != 1 || owner.State.Balance != 0)
+                    { Fail("repeat restoration paid the milestone again after restart"); yield break; }
+                    Debug.Log("PASS Relay restart reload: " + owner.State.CharacterId + " latest restored; unsaved equip and interrupted attempt absent; repeat paid no point.");
+                }
+            }
+            Application.Quit(0);
+        }
+
+        // Only persistence is under test here. Real combat and traversal are covered by the native live route.
+        static bool PrepareRelayCompletion(ExpeditionLoop loop)
+        {
+            var owner = loop.Character;
+            var relay = GameObject.Find("RELAY / F after objective");
+            var defenders = UnityEngine.Object.FindObjectsByType<SandboxEnemy>();
+            if (relay == null || defenders.Length != 2) return false;
+            foreach (var defender in defenders)
+                if (!defender.GetComponent<CombatVitality>().ReceiveHit(
+                    new HitData("Restart lifecycle fixture", 100000, 0, Color.white, owner.transform.position, owner.GetComponent<CombatVitality>()), out _)) return false;
+            var controller = owner.GetComponent<CharacterController>();
+            controller.enabled = false;
+            owner.transform.position = relay.transform.position + Vector3.back;
+            controller.enabled = true;
+            Physics.SyncTransforms();
+            return true;
         }
 
         static IEnumerator Exercise(ExpeditionLoop loop)

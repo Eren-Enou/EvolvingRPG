@@ -6,10 +6,17 @@ A Unity third-person action-RPG prototype built around positioning, commitment, 
 
 This checkout is an existing Unity project. Use the engine version recorded in [ProjectVersion.txt](ProjectSettings/ProjectVersion.txt), currently **6000.6.7f1**. Do not recreate the project from the old scaffold instructions or change versions to match historical milestone text.
 
-## Current prototype
+## Play the Warrior Journey
+
+Open [RelayOutpost.unity](Assets/Game/Scenes/RelayOutpost.unity) in Unity, press **Play**, and click the Game view. The scene is ready to play. Walk to the gold mission board, press **F**, and deploy on **Restore Relay**. Defeat both defenders and activate the blue relay with **F**. The first restoration gives your Warrior one point to invest in Breaker or Momentum.
+
+Use **Tab → Saved Warriors** in the hub to save or resume a Warrior. Return to the board for another restoration or try **Priority Interdiction**, where only the fast fighter is required. See the [V0.6 Warrior Journey report](docs/V0.6_WARRIOR_JOURNEY_REPORT.md) for the full controls, current Windows build, and playtest steps.
+
+## Prototype scenes
 
 | Scene under Assets/Game/Scenes | Purpose |
 | --- | --- |
+| RelayOutpost | Hub, two expeditions, earned specialization and explicit Warrior saves |
 | MovementTest | Third-person movement, jumping, strafing and camera comparison |
 | CombatTest | Light/Heavy, directional dodge and stationary training target |
 | EnemyTest | Guarded/fast opponents, health, poise and encounter reactions |
@@ -20,7 +27,7 @@ This checkout is an existing Unity project. Use the engine version recorded in [
 | RetaliationTest | C3 discovery plus optional extended-return A/B trial |
 | DevelopmentTest | Owned Heavy choice, contextual discovery, deliberate investment/activation and versioned A/B saves |
 
-Newest playable slice: open **Assets/Game/Scenes/DevelopmentTest.unity**, press Play, click Game view, then press **Tab** at spawn. Preview and confirm Breaker or Momentum with the controlled test point. Momentum's verified evade-and-return exchanges supply a clue and reveal; later learning and activation are separate choices. The panel offers explicit local save/load slots A/B. See [controls and save behavior](docs/CHARACTER_DEVELOPMENT_PLAYGROUND.md) and [continued development results](docs/CONTINUED_DEVELOPMENT_REPORT.md).
+To compare techniques in isolation, open **Assets/Game/Scenes/DevelopmentTest.unity**, press Play, click Game view, then press **Tab** at spawn. Preview and confirm Breaker or Momentum with the controlled test point. Momentum's verified evade-and-return exchanges supply a clue and reveal. Later learning and activation are separate choices. The panel offers explicit local save/load slots A/B. See [controls and save behavior](docs/CHARACTER_DEVELOPMENT_PLAYGROUND.md) and [continued development results](docs/CONTINUED_DEVELOPMENT_REPORT.md).
 
 Focused combat/technique input and supported native progression/save checks pass. The economy and specialization rules are experimental; gameplay feel awaits player testing. Stamina remains deliberately permissive and unchanged. Existing evidence/discovery/trial scenes remain available as independent comparisons.
 

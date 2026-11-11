@@ -249,8 +249,9 @@ namespace EvolvingRPG.Editor
             Require(loop.Attempt==null && !actor.Busy && !actor.CommittedContext.HasValue,"load retained an attempt or action");
             Require(owner.State.ExperienceCount>0,"live fights produced no retained Heavy experience");
             int baselineFacts=owner.State.ExperienceCount;
+            yield return SavePartialDiscovery(identity);
             yield return Press(Key.Tab);
-            Require(!owner.MenuOpen,"Tab did not leave development after load");
+            Require(!owner.MenuOpen,"Tab did not leave development after partial discovery reload");
             yield return Walk(new Vector3(55,.05f,2.5f),.3f);
             yield return Press(Key.F);
             Require(loop.BoardOpen,"F did not reopen the board after load");
@@ -267,10 +268,8 @@ namespace EvolvingRPG.Editor
                 && owner.State.RelayMilestone && owner.State.CharacterId==identity && owner.State.ExperienceCount>baselineFacts
                 && owner.HasUnsavedProgress,
                 "live repeat duplicated the reward, lost identity, or did not record specialized practice");
-            if (owner.State.Exchanges > 0)
-                Require(loop.Report.Contains(discoveryPoint > 0 ? "Retaliatory Momentum discovered. +1 development point"
-                    : $"{owner.State.Exchanges}/3 qualifying exchanges recorded"),
-                    "debrief did not explain the Momentum progress earned on this expedition");
+            Require(discoveryPoint==1 && loop.Report.Contains("Retaliatory Momentum discovered. +1 development point"),
+                "continued practice did not reveal and explain Retaliatory Momentum");
             File.AppendAllText(Report,"PASS Live journey through F, board/debrief buttons, investment, save, fresh start, load, Tab and second restoration.\n");
             Require(owner.SaveSlot("A") && owner.LoadSlot("A") && owner.State.ExperienceCount>baselineFacts,
                 "repeat experience did not survive explicit save and reload");
@@ -324,6 +323,35 @@ namespace EvolvingRPG.Editor
             yield return Click("Confirm load");
             Require(owner.State.CharacterId==identity && !owner.HasUnsavedProgress && owner.SaveStatus.Contains("slot A"),
                 "load buttons did not restore and acknowledge the earned Warrior");
+        }
+        static IEnumerator SavePartialDiscovery(string identity)
+        {
+            yield return Press(Key.Tab);
+            Require(!owner.MenuOpen,"Tab did not leave development for partial practice");
+            yield return Walk(new Vector3(55,.05f,2.5f),.3f);
+            yield return Press(Key.F);
+            yield return Click("Deploy: Restore Relay");
+            Require(loop.InMission && owner.State.Exchanges==0,"partial practice did not start without discovery credit");
+            yield return .25f;
+            yield return Walk(new Vector3(-7,.05f,-3),.5f);
+            var (guard,fast)=Defenders();
+            yield return Fight(guard, stopAfterExchange:true);
+            Require(owner.State.Exchanges==1 && owner.State.Knowledge==DiscoveryKnowledge.Foreshadowed
+                && !fast.GetComponent<EnemyVitality>().Defeated,"partial practice did not stop at the first qualifying exchange");
+            yield return Walk(new Vector3(-7,.05f,-7),.55f);
+            yield return Walk(new Vector3(0,.05f,-7),.55f);
+            yield return Press(Key.F);
+            Require(loop.Attempt.Outcome==ExpeditionPhase.Abandoned && loop.BoardOpen && !loop.Attempt.PointAwarded
+                && owner.State.Balance==0 && owner.HasUnsavedProgress && !retaliation.Opportunity.HasValue
+                && loop.Report.Contains("1/3 qualifying exchanges recorded") && loop.Report.Contains("kept this progress"),
+                "abandon did not report the retained exchange without granting a reward");
+            yield return Click("Inspect Warrior / Save and Load");
+            yield return SaveAndReloadViaPanel(identity);
+            Require(owner.State.Exchanges==1 && discovery.Ledger.Exchanges==1 && owner.State.Balance==0
+                && owner.State.Knowledge==DiscoveryKnowledge.Foreshadowed && !owner.State.RetaliationLearned
+                && !retaliation.Opportunity.HasValue && loop.Attempt==null,
+                "reload lost partial knowledge or restored temporary combat state");
+            File.AppendAllText(Report,"PASS First live exchange retained after walking back to abandon, then saved and restored without a reward or transient opportunity.\n");
         }
         static IEnumerator ProveOwnedReturn(string identity)
         {
@@ -479,9 +507,10 @@ namespace EvolvingRPG.Editor
             Intent(Vector3.zero); yield return .1f;
             File.AppendAllText(Report,"WALK "+destination+" / actual travel "+distance.ToString("0.00")+"m\n");
         }
-        static IEnumerator Fight(SandboxEnemy enemy,ReturnChoice choice=ReturnChoice.None)
+        static IEnumerator Fight(SandboxEnemy enemy,ReturnChoice choice=ReturnChoice.None,bool stopAfterExchange=false)
         {
             float started=Time.time;
+            int initialExchanges=owner.State.Exchanges;
             var target=enemy.GetComponent<EnemyVitality>(); int dodged=-1,attacks=0,dodges=0;
             float committedAdvance=0, committedPoise=0, committedRecovery=0;
             var last=owner.Review.Latest;
@@ -511,6 +540,11 @@ namespace EvolvingRPG.Editor
             while(!target.Defeated)
             {
                 ReadOutcome();
+                if(stopAfterExchange && owner.State.Exchanges>initialExchanges)
+                {
+                    Intent(Vector3.zero);
+                    yield break;
+                }
                 Require(loop.InMission && !vitality.Defeated,"scripted player was defeated; no restart/health override");
                 Require(enemy.isActiveAndEnabled,"live opponent was disabled");
                 if(Time.time-started>120) throw new TimeoutException("Fight stalled: "+enemy.name+" HP "+target.Health+" / player "+vitality.Health);
